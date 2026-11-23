@@ -4,6 +4,18 @@ Claude Code の作業を見守る、ローカル専用の可視化ツールで�
 
 > Mimamori は個人が作った非公式ツールで、Anthropic社とは関係ありません。「Claude Code と連携」する対象の説明としてのみ名前を使っています。
 
+![Mimamori のデモ(デモデータ)](docs/demo.gif)
+
+### まず試す(3行)
+
+```
+git clone https://github.com/mimamori-dev/mimamori.git && cd mimamori
+npm ci
+npm start
+```
+
+ブラウザで http://127.0.0.1:4317 を開きます。Claude Code の動きを画面に出すには hook の導入が必要です(下の「導入3ステップ」と「hookは何を変えるか」を先に読んでください)。非公式・Windowsのみ確認・保証なしです。
+
 (この文書と画面の「社長」は、あなた(利用者)のことです。)
 
 ## 何ができるか
