@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="/static/panels.css">
 <script type="module" src="/static/office.js"></script>
 <script defer src="/static/panels.js"></script>
+<script type="module" src="/static/speech.js"></script>
 <link rel="stylesheet" href="/ext/panels.css">
 <script defer src="/ext/panels.js"></script>
 </head>
@@ -34,6 +35,20 @@
     <div><dt>トークン数</dt><dd><b id="st-tokens">—</b></dd></div>
   </dl>
   <div id="quota" class="quota" aria-label="利用枠"></div>
+  <div id="tts" class="tts">
+    <div class="tts-row">
+      <button id="tts-sw" class="tts-sw" type="button" role="switch" aria-checked="false" title="部長の発言を声で読み上げます(既定はOFF)">🔊 読み上げ <b id="tts-state">OFF</b></button>
+      <button id="tts-gear" class="tts-gear" type="button" aria-expanded="false" aria-controls="tts-cfg" aria-label="読み上げの設定" title="読み上げの設定">⚙</button>
+      <span id="tts-credit" class="tts-credit" hidden></span>
+    </div>
+    <p id="tts-hint" class="tts-hint" hidden>前回はONでした。使うときはスイッチを押してください</p>
+    <div id="tts-cfg" class="tts-cfg" hidden>
+      <label for="tts-speaker">VOICEVOX の話者ID</label>
+      <input id="tts-speaker" type="number" min="0" max="9999" step="1" value="11" inputmode="numeric">
+      <p class="note">VOICEVOX が起動していれば使い、無ければブラウザの音声で読みます</p>
+    </div>
+  </div>
+
   <div class="cost">
     <div class="cost-row"><span class="cost-label">金額の目安</span><b id="st-cost">—</b></div>
     <p id="st-rate" class="rate">為替は仮のレート</p>

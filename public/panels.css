@@ -104,3 +104,20 @@
   .pn-sns-btn { align-self: auto; margin: 0 0 8px; cursor: default; }
   .pn-sns-drawer { display: none !important; }
 }
+
+/* 読み上げ(任意・既定OFF) */
+.tts { margin: 8px 0 0; }
+.tts-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.tts-sw, .tts-gear { border: 1px solid var(--line); background: #fff; border-radius: 999px; font: inherit; font-size: 12px; padding: 4px 12px; cursor: pointer; color: var(--ink-soft); }
+.tts-sw b { margin-left: 4px; font-size: 11px; padding: 1px 7px; border-radius: 999px; background: #e6e3ee; color: #5a5470; }
+.tts-sw.on { border-color: #8c78d0; color: #3b2f6b; }
+.tts-sw.on b { background: #6b55c4; color: #fff; }
+.tts-gear { padding: 4px 9px; }
+.tts-sw:focus-visible, .tts-gear:focus-visible, .tts-cfg input:focus-visible { outline: 2px solid #8c78d0; outline-offset: 2px; }
+.tts-credit, .tts-hint { font-size: 10.5px; color: var(--ink-soft); margin: 0; }
+.tts-hint { margin-top: 4px; }
+.tts-cfg { margin-top: 6px; font-size: 11.5px; }
+.tts-cfg label { display: block; margin-bottom: 2px; }
+.tts-cfg input { width: 90px; font: inherit; padding: 2px 6px; border: 1px solid var(--line); border-radius: 6px; }
+.tts-cfg .note { margin: 4px 0 0; }
+[hidden].tts-credit, [hidden].tts-hint, [hidden].tts-cfg { display: none; }

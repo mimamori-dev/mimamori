@@ -15,6 +15,7 @@ import { checkDeliverablePath, openWithDefaultApp, KINDS } from './lib/deliverab
 import { loadSns, saveSns } from './lib/sns-store.mjs';
 import { sanitizeEvent } from './lib/guard.mjs';
 import { DEFAULT_PROJECT, loadProjects, transcriptInProject, projectsFromOrigin } from './lib/projects.mjs';
+import { createTts, TTS_TEXT_MAX, TTS_BODY_MAX } from './lib/tts.mjs';
 import { isRemoteEnabled, startRemoteWatcher } from './lib/remote-config.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -51,7 +52,7 @@ const cookieOf = (req, name) => {
 // 「投稿済みにする」から掲示板のカードが自動で消えるまでの猶予(この間は「未投稿に戻す」で取り消せる)
 export const SNS_POSTED_GRACE_MS = 3 * 60 * 1000;
 
-export function startServer({ port, host = '127.0.0.1', allowedRoot = path.join(os.homedir(), '.claude', 'projects'), now = Date.now, waitMaxSec = 30, assignBubbleMs = 2500, treeRoot = PROJECT_ROOT, commands = null, commandTimeoutMs = 30_000, decisionGraceMs = 5000, deliverableGraceMs = 5000, snsPostedGraceMs = SNS_POSTED_GRACE_MS, openMinIntervalMs = 1000, opener = openWithDefaultApp, projectsDir = process.env.OFFICE_PROJECTS_DIR ? path.resolve(process.env.OFFICE_PROJECTS_DIR) : path.join(here, 'projects'), narrowTranscripts = false, snsFile = path.join(here, 'data', 'sns-queue.json'), remoteAllowed = isRemoteEnabled(), extDir = process.env.OFFICE_EXT_DIR || null } = {}) {
+export function startServer({ port, host = '127.0.0.1', allowedRoot = path.join(os.homedir(), '.claude', 'projects'), now = Date.now, waitMaxSec = 30, assignBubbleMs = 2500, treeRoot = PROJECT_ROOT, commands = null, commandTimeoutMs = 30_000, decisionGraceMs = 5000, deliverableGraceMs = 5000, snsPostedGraceMs = SNS_POSTED_GRACE_MS, openMinIntervalMs = 1000, opener = openWithDefaultApp, projectsDir = process.env.OFFICE_PROJECTS_DIR ? path.resolve(process.env.OFFICE_PROJECTS_DIR) : path.join(here, 'projects'), narrowTranscripts = false, snsFile = path.join(here, 'data', 'sns-queue.json'), remoteAllowed = isRemoteEnabled(), extDir = process.env.OFFICE_EXT_DIR || null, voicevoxUrl = 'http://127.0.0.1:50021', ttsTimeoutMs = 10_000 } = {}) {
   const pricing = readJson('pricing.json');
   // treeRoot は demo(既定のプロジェクト)のルートを上書きする(テスト用)。ほかのプロジェクトのルートは project.json
   const registry = loadProjects({ projectsDir, legacyRosterPath: path.join(here, 'roster.json'), defaultRoot: treeRoot });
@@ -83,6 +84,33 @@ export function startServer({ port, host = '127.0.0.1', allowedRoot = path.join(
     const okOrigins = [`http://127.0.0.1:${listenPort}`, `http://localhost:${listenPort}`];
     return (h.origin !== undefined && !okOrigins.includes(h.origin)) || (h['sec-fetch-site'] !== undefined && h['sec-fetch-site'] !== 'same-origin');
   };
+
+  // 読み上げの中継(任意機能)。PC の画面(同一オリジン)だけ。遠隔・他サイトは 403。VOICEVOX が無ければ 503
+  const tts = createTts({ baseUrl: voicevoxUrl, timeoutMs: ttsTimeoutMs });
+  function handleTtsPost(req, res, isRemote) {
+    if (isRemote || crossSite(req)) { res.writeHead(403); res.end(); return; }
+    if (!/^application\/json\s*(;|$)/i.test(String(req.headers['content-type'] ?? ''))) { res.writeHead(415); res.end(); return; }
+    if (Number(req.headers['content-length']) > TTS_BODY_MAX) { res.writeHead(413); res.end(); return; }
+    const chunks = [];
+    let size = 0;
+    req.on('data', (c) => { size += c.length; if (size <= TTS_BODY_MAX) chunks.push(c); });
+    req.on('end', async () => {
+      try {
+        if (size > TTS_BODY_MAX) { res.writeHead(413); res.end(); return; }
+        let body;
+        try { body = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { res.writeHead(400); res.end(); return; }
+        const text = body && typeof body === 'object' ? body.text : null;
+        const speaker = body.speaker === undefined ? 11 : body.speaker;
+        if (typeof text !== 'string' || !text.trim()) { res.writeHead(400); res.end(); return; }
+        if (text.length > TTS_TEXT_MAX) { res.writeHead(413); res.end(); return; }
+        if (!Number.isInteger(speaker) || speaker < 0 || speaker > 9999) { res.writeHead(400); res.end(); return; }
+        let wav;
+        try { wav = await tts.synthesize(text, speaker); } catch { res.writeHead(503, { 'Retry-After': '30' }); res.end(); return; }
+        res.writeHead(200, { 'Content-Type': 'audio/wav', 'Content-Length': wav.length, 'Cache-Control': 'no-store' });
+        res.end(wav);
+      } catch { if (!res.headersSent) res.writeHead(500); res.end(); }
+    });
+  }
 
   // コマンド窓。許可リストの id だけを実行する(文字列はシェルに渡さない)。PC の画面(同一オリジン)だけ
   function handleCommandPost(req, res) {
@@ -745,6 +773,8 @@ export function startServer({ port, host = '127.0.0.1', allowedRoot = path.join(
       if (proj) proj.handleAnswerPost(req, res); else notFound(res);
     } else if (req.method === 'POST' && p === '/answer-cancel') {
       if (proj) proj.handleAnswerCancel(req, res); else notFound(res);
+    } else if (req.method === 'POST' && p === '/tts') {
+      handleTtsPost(req, res, isRemote);
     } else if (req.method === 'POST' && p === '/command') {
       handleCommandPost(req, res);
     } else if (req.method === 'GET' && p === '/commands') {
