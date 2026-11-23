@@ -5,9 +5,15 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import readline from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
+import { resolveRemoteDir } from '../lib/remote-config.mjs';
 
-const dir = process.env.OFFICE_REMOTE_DIR ?? path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const resolved = resolveRemoteDir(process.env, path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'));
+if (!resolved.dir) { console.error(`${resolved.reason}。変更していません。`); process.exit(2); }
+const dir = resolved.dir;
 const file = path.join(dir, 'remote.json');
+
+// サーバーが別の場所(OFFICE_REMOTE_DIR)を使っていると気づけるよう、作成先だけ出す(合言葉は出さない)
+console.log(`作成先: ${file}${resolved.custom ? '' : '(OFFICE_REMOTE_DIR 未指定。サーバーに指定している場合は同じ値を付けて実行してください)'}`);
 
 if (!process.argv.includes('--yes')) {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });

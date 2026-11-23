@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { startTestServer } from './helpers.mjs';
-import { isRemoteEnabled, startRemoteWatcher } from '../lib/remote-config.mjs';
+import { isRemoteEnabled, startRemoteWatcher, resolveRemoteDir } from '../lib/remote-config.mjs';
 
 // 公開版では遠隔(スマホ)は既定で無効。OFFICE_REMOTE=1 のときだけ有効にする
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'office-optin-'));
@@ -91,4 +92,47 @@ test('OFFICE_REMOTE=1 なら Tailscale の宛先に口を開き、合言葉を�
     console.log = log;
     await s.close();
   }
+});
+
+test('OFFICE_REMOTE_DIR: 空文字・空白は既定の場所(rotate と同じ判定)', () => {
+  assert.equal(resolveRemoteDir({ OFFICE_REMOTE_DIR: '' }, '/x').dir, '/x');
+  assert.equal(resolveRemoteDir({ OFFICE_REMOTE_DIR: '  ' }, '/x').dir, '/x');
+  assert.equal(resolveRemoteDir({}, '/x').custom, false);
+});
+
+for (const [name, mk, re] of [
+  ['相対パス', () => 'rel/dir', /絶対パス/],
+  ['存在しないパス', () => path.join(dir, 'no-such-dir'), /存在しません/],
+  ['フォルダでない', () => { const f = path.join(dir, 'afile'); fs.writeFileSync(f, 'x'); return f; }, /フォルダではありません/],
+]) {
+  test(`OFFICE_REMOTE_DIR が${name}なら警告を1回だけ出し、遠隔を開かず、どこにも remote.json を作らない`, async () => {
+    const d = fs.mkdtempSync(path.join(dir, 'bad-'));
+    const bad = mk();
+    const s = await startTestServer({ port: 0, allowedRoot: dir, remoteAllowed: true });
+    const warns = [];
+    try {
+      const t = startRemoteWatcher(s, d, { env: { OFFICE_REMOTE: '1', OFFICE_REMOTE_DIR: bad }, findIp: () => '127.0.0.1', port: 0, warn: (m) => warns.push(m) });
+      assert.equal(await t.first, false);
+      clearInterval(t);
+      assert.equal(warns.length, 1);
+      assert.match(warns[0], re);
+      assert.equal(s.remotePort(), null);
+      assert.equal(fs.existsSync(path.join(d, 'remote.json')), false);
+    } finally { await s.close(); }
+  });
+}
+
+test('OFFICE_REMOTE_DIR 不正のとき remote-rotate は何も変更せず終了する', () => {
+  const d = fs.mkdtempSync(path.join(dir, 'rotbad-'));
+  const r = spawnSync(process.execPath, [path.join(import.meta.dirname, '..', 'tools', 'remote-rotate.mjs'), '--yes'], { env: { ...process.env, OFFICE_REMOTE_DIR: path.join(d, 'nope') }, encoding: 'utf8' });
+  assert.notEqual(r.status, 0);
+  assert.equal(fs.existsSync(path.join(d, 'nope')), false);
+});
+
+test('remote-rotate は作成先のパスを出し、合言葉は出さない', () => {
+  const d = fs.mkdtempSync(path.join(dir, 'rotpath-'));
+  const r = spawnSync(process.execPath, [path.join(import.meta.dirname, '..', 'tools', 'remote-rotate.mjs'), '--yes'], { env: { ...process.env, OFFICE_REMOTE_DIR: d }, encoding: 'utf8' });
+  assert.equal(r.status, 0);
+  assert.ok(r.stdout.includes(path.join(d, 'remote.json')));
+  assert.ok(!r.stdout.includes(JSON.parse(fs.readFileSync(path.join(d, 'remote.json'), 'utf8')).token));
 });
