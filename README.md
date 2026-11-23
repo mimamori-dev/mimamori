@@ -77,6 +77,8 @@ node tools/new-project.mjs <id>   # 例: node tools/new-project.mjs my-app
 
 `projects/_template/` を元に `projects/<id>/` を作ります。`id` は小文字英字で始まり、小文字英数字・`_`・`-`、32文字以内です。作ったあと `project.json`(`name`・`color`・`root`)と `roster.json`(名簿)を編集します。各項目の意味は `projects/_template/README.md` にあります。`root` はファイル一覧・成果物登録の基準フォルダ(`null` なら未設定)で、作業フォルダがこの下にある hook をそのプロジェクトに振り分けます。同梱の `projects/demo/`(サンプル)と `projects/apps/` が見本です。壊れた設定は、起動時のターミナルと `npm run doctor` に理由つきで警告が出ます(そのプロジェクトは読み込まれません)。
 
+プロジェクトの置き場所を変えたいときは、環境変数 `OFFICE_PROJECTS_DIR` に `projects/` と同じ構成のフォルダを指定します(未指定なら本体の `projects/`)。
+
 ## 拡張の差し込み口
 
 環境変数 `OFFICE_EXT_DIR` に、`ext.mjs` を置いたフォルダを指定すると、起動時に読み込みます(未指定なら何も変わりません)。見本は `examples/ext-sample/` です。
