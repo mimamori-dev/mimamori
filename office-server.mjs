@@ -11,6 +11,7 @@ import { createUsageMeter } from './lib/usage-meter.mjs';
 import { createCommandRunner, defaultCommands } from './lib/commands.mjs';
 import { listTree } from './lib/tree.mjs';
 import { createTalkReader } from './lib/talk.mjs';
+import { createEstimates } from './lib/estimates.mjs';
 import { checkDeliverablePath, openWithDefaultApp, KINDS } from './lib/deliverables.mjs';
 import { loadSns, saveSns } from './lib/sns-store.mjs';
 import { sanitizeEvent } from './lib/guard.mjs';
@@ -38,6 +39,7 @@ const cookieValue = (token, generation) => (generation > 0 ? `g${generation}.${t
 const PROJECT_ROOT = process.env.OFFICE_PROJECT_ROOT ? path.resolve(process.env.OFFICE_PROJECT_ROOT) : here;
 const COMMAND_BODY_MAX = 1024;
 const DECISION_BODY_MAX = 8 * 1024;
+const ESTIMATE_BODY_MAX = 4 * 1024;
 
 const sha = (v) => crypto.createHash('sha256').update(String(v)).digest();
 const sameKey = (a, b) => typeof a === 'string' && typeof b === 'string' && crypto.timingSafeEqual(sha(a), sha(b));
@@ -52,7 +54,7 @@ const cookieOf = (req, name) => {
 // 「投稿済みにする」から掲示板のカードが自動で消えるまでの猶予(この間は「未投稿に戻す」で取り消せる)
 export const SNS_POSTED_GRACE_MS = 3 * 60 * 1000;
 
-export function startServer({ port, host = '127.0.0.1', allowedRoot = path.join(os.homedir(), '.claude', 'projects'), now = Date.now, waitMaxSec = 30, assignBubbleMs = 2500, treeRoot = PROJECT_ROOT, commands = null, commandTimeoutMs = 30_000, decisionGraceMs = 5000, deliverableGraceMs = 5000, snsPostedGraceMs = SNS_POSTED_GRACE_MS, openMinIntervalMs = 1000, opener = openWithDefaultApp, projectsDir = process.env.OFFICE_PROJECTS_DIR ? path.resolve(process.env.OFFICE_PROJECTS_DIR) : path.join(here, 'projects'), narrowTranscripts = false, snsFile = path.join(here, 'data', 'sns-queue.json'), remoteAllowed = isRemoteEnabled(), extDir = process.env.OFFICE_EXT_DIR || null, voicevoxUrl = 'http://127.0.0.1:50021', ttsTimeoutMs = 10_000 } = {}) {
+export function startServer({ port, host = '127.0.0.1', allowedRoot = path.join(os.homedir(), '.claude', 'projects'), now = Date.now, waitMaxSec = 30, assignBubbleMs = 2500, treeRoot = PROJECT_ROOT, commands = null, commandTimeoutMs = 30_000, decisionGraceMs = 5000, deliverableGraceMs = 5000, snsPostedGraceMs = SNS_POSTED_GRACE_MS, openMinIntervalMs = 1000, opener = openWithDefaultApp, projectsDir = process.env.OFFICE_PROJECTS_DIR ? path.resolve(process.env.OFFICE_PROJECTS_DIR) : path.join(here, 'projects'), narrowTranscripts = false, snsFile = path.join(here, 'data', 'sns-queue.json'), estimatesFile = path.join(here, 'data', 'estimates.jsonl'), remoteAllowed = isRemoteEnabled(), extDir = process.env.OFFICE_EXT_DIR || null, voicevoxUrl = 'http://127.0.0.1:50021', ttsTimeoutMs = 10_000 } = {}) {
   const pricing = readJson('pricing.json');
   // treeRoot は demo(既定のプロジェクト)のルートを上書きする(テスト用)。ほかのプロジェクトのルートは project.json
   const registry = loadProjects({ projectsDir, legacyRosterPath: path.join(here, 'roster.json'), defaultRoot: treeRoot });
@@ -258,13 +260,14 @@ export function startServer({ port, host = '127.0.0.1', allowedRoot = path.join(
     const meter = createUsageMeter({ pricing, allowedRoot });
     const talk = createTalkReader({ allowedRoot });
     const inbox = createInbox({ now, waitMaxSec });
+    const estimates = createEstimates({ file: estimatesFile, project: info.id, now });
     // transcript は、このプロジェクトのフォルダのものだけを読む(他プロジェクトの会話・使用量を読ませない)。
     // demo は従来どおり allowedRoot 全体(既存の動作を保つ)。本番の起動では narrowTranscripts で demo も絞る
     const narrow = info.id !== DEFAULT_PROJECT || narrowTranscripts;
     const transcriptOk = (p) => !narrow || transcriptInProject(allowedRoot, info.root, p);
     const mineOnly = (fn) => { for (const [c, v] of clients) if (v.project === info.id) fn(c, v); };
     const broadcast = (name, data) => mineOnly((c) => send(c, name, data));
-    const snap = (isRemote = false) => ({ ...snapshot(state, now(), { local: !isRemote }), snsGraceMs: snsPostedGraceMs, usage: meter.totals(), inbox: { pending: inbox.pending(), listening: inbox.listening(), canSend: !isRemote, ...(isRemote && remote ? { canInstruct: true } : {}) } }); // canInstruct: 遠隔でも指示の送信だけは可(canSend は判断カード等の PC 専用操作の目印のまま)
+    const snap = (isRemote = false) => ({ ...snapshot(state, now(), { local: !isRemote }), snsGraceMs: snsPostedGraceMs, usage: meter.totals(), ...(isRemote ? {} : { estimates: estimates.list() }), inbox: { pending: inbox.pending(), listening: inbox.listening(), canSend: !isRemote, ...(isRemote && remote ? { canInstruct: true } : {}) } }); // canInstruct: 遠隔でも指示の送信だけは可(canSend は判断カード等の PC 専用操作の目印のまま)
     // 部長の発言(say)の本文は SSE のイベントにも載せない(画面は PC の snapshot.talk から読む)
     const broadcastOffice = (event) => {
       // 発言の本文・ToDo の進行中の見出しは、SSE のイベントには載せない(画面は PC の snapshot から読む)
@@ -384,6 +387,23 @@ export function startServer({ port, host = '127.0.0.1', allowedRoot = path.join(
       });
     }
     const decisionEvent = () => ({ ts: now(), kind: 'decision', agentId: null, agentType: null, text: '', title: '' });
+    // 部長(post-estimate.mjs)が作業見積もりを出す・実績を足す。PC の画面・ツール(127.0.0.1)だけ
+    const estimateEvent = () => ({ ts: now(), kind: 'estimate', agentId: null, agentType: null, text: '', title: '' });
+    function handleEstimatePost(req, res, isUpdate) {
+      readSmallJson(req, res, ESTIMATE_BODY_MAX, (body) => {
+        if (isUpdate) {
+          const r = estimates.update(body);
+          if (r === 'bad') { res.writeHead(400); res.end(); return; }
+          if (r === 'missing') { res.writeHead(404); res.end(); return; }
+          res.writeHead(204); res.end();
+        } else {
+          const r = estimates.add(body);
+          if (!r) { res.writeHead(400); res.end(); return; }
+          json(res, 201, r);
+        }
+        broadcastOffice(estimateEvent());
+      });
+    }
     // 部長(post-decision.mjs)が判断カードを出す
     function handleDecisionPost(req, res) {
       readSmallJson(req, res, DECISION_BODY_MAX, (body) => {
@@ -673,7 +693,7 @@ export function startServer({ port, host = '127.0.0.1', allowedRoot = path.join(
       openGate,
       snap,
       ingest,
-      handleInstructionPost, handleAnswerRead, handleDecisionPost, handleAnswerPost, handleAnswerCancel, handleDecisionResolve, handleDeliverablePost, handleDeliverableAct, handleInstructionNext,
+      handleInstructionPost, handleAnswerRead, handleDecisionPost, handleEstimatePost, handleAnswerPost, handleAnswerCancel, handleDecisionResolve, handleDeliverablePost, handleDeliverableAct, handleInstructionNext,
       close() {
         inbox.closeAll();
         for (const t of assignTimers) clearTimeout(t);
@@ -743,7 +763,7 @@ export function startServer({ port, host = '127.0.0.1', allowedRoot = path.join(
     // プロジェクトは ?project=(省略は demo)。登録されていなければ、プロジェクトごとの経路は 404
     const proj = projects.get(url.searchParams.get('project') ?? DEFAULT_PROJECT);
     // 指示の送受信は PC 側(127.0.0.1)だけ。遠隔は合言葉があっても常に 403
-    if (isRemote && ((p === '/instruction' && req.method !== 'POST') || p.startsWith('/instruction/') || p === '/answer-read' || p === '/decision' || p === '/answer' || p === '/answer-cancel' || p === '/decision-resolve' || p === '/deliverable' || p === '/deliverable-open' || p === '/deliverable-undo' || p === '/deliverable-dismiss' || p === '/deliverable-approve' || p === '/deliverable-reject' || p === '/deliverable-posted' || p === '/deliverable-unposted' || p === '/commands' || p === '/command' || p === '/tree')) { res.writeHead(403); res.end(); return; }
+    if (isRemote && ((p === '/instruction' && req.method !== 'POST') || p.startsWith('/instruction/') || p === '/answer-read' || p === '/decision' || p === '/answer' || p === '/answer-cancel' || p === '/decision-resolve' || p === '/estimate' || p === '/estimate/update' || p === '/deliverable' || p === '/deliverable-open' || p === '/deliverable-undo' || p === '/deliverable-dismiss' || p === '/deliverable-approve' || p === '/deliverable-reject' || p === '/deliverable-posted' || p === '/deliverable-unposted' || p === '/commands' || p === '/command' || p === '/tree')) { res.writeHead(403); res.end(); return; }
     if (isRemote) {
       if (!remote || !remoteGate(req, res, url)) return;
       if (p === '/health' || p === '/remote-info' || LOCAL_ONLY_ROUTES.some(([pre]) => p.startsWith(pre))) { res.writeHead(404); res.end(); return; }
@@ -764,6 +784,8 @@ export function startServer({ port, host = '127.0.0.1', allowedRoot = path.join(
       if (proj) proj.handleAnswerRead(req, res); else notFound(res);
     } else if (req.method === 'POST' && p === '/decision') {
       if (proj) proj.handleDecisionPost(req, res); else notFound(res);
+    } else if (req.method === 'POST' && (p === '/estimate' || p === '/estimate/update')) {
+      if (proj) proj.handleEstimatePost(req, res, p === '/estimate/update'); else notFound(res);
     } else if (req.method === 'POST' && p === '/deliverable') {
       if (proj) proj.handleDeliverablePost(req, res); else notFound(res);
     } else if (req.method === 'POST' && (p === '/deliverable-open' || p === '/deliverable-undo' || p === '/deliverable-dismiss' || p === '/deliverable-approve' || p === '/deliverable-reject' || p === '/deliverable-posted' || p === '/deliverable-unposted')) {

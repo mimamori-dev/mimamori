@@ -38,6 +38,15 @@ npm start
 
 > スマホ用の遠隔は既定で無効です。環境変数 `OFFICE_REMOTE=1` を付けて有効にした場合に限り、起動時のターミナルにスマホ用のURLが出て、合言葉つきのQRはPCの画面に出ます。**その場合は、ターミナルの画面・PCの画面・記録を人に見せないでください**。
 
+### 作業見積もり
+
+仕事を頼む前の予想(トークン・5時間枠%・週枠%)を画面の「作業見積もり」欄に出し、終わったら実績を足して予想との差を見られます(PCの画面だけ。予想は目安±2倍の感覚値)。記録は `data/estimates.jsonl` に追記されます。
+
+```
+echo '{"title":"調査","tokens":50000,"fiveHourPct":4,"weekPct":1}' | node tools/post-estimate.mjs   # 登録(idが出る)
+echo '{"actualTokens":70000,"actualFiveHourPct":5}' | node tools/post-estimate.mjs --update e1   # 実績を足して完了にする
+```
+
 ### hookは何を変えるか・元に戻し方
 
 hook は、設定ファイル(`--user` なら `~/.claude/settings.json`、`--project` ならそのフォルダの `.claude/settings.json`)に、このフォルダの `office-hook.mjs` を呼ぶ項目を足します。Claude Code のイベントをローカルのサーバーへ送るだけです。

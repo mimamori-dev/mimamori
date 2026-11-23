@@ -64,7 +64,43 @@
   feed.insertBefore(snBtn, feed.firstChild); // 右の通知欄の上端(入力欄・3Dの右下には置かない)
   document.body.append(sn);
 
-  mount.append(dv, tk);
+  // ---------- 作業見積もり(予想と実績の差。PC の画面だけ。数値・メモは遠隔には出ない) ----------
+  const es_ = el('section', 'pn-sec pn-est');
+  es_.setAttribute('aria-label', '作業見積もり');
+  const esHead = el('h2', 'pn-h', '作業見積もり');
+  const esList = el('ul', 'pn-dv-list pn-est-list');
+  const esNote = el('p', 'pn-est-note', '予想は過去の同種作業からの感覚値(目安±2倍)');
+  es_.append(esHead, esList, esNote);
+  let esSig = '';
+  const fmtTok = (n) => (n >= 1e6 ? `${+(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${+(n / 1e3).toFixed(1)}k` : String(n));
+  const fmtPct = (n) => `${+Number(n).toFixed(1)}%`;
+  const ratio = (a, e) => (a != null && e != null && e > 0 ? `${+(a / e).toFixed(1)}倍` : null);
+  const line = (label, t, f, w, fmtT = fmtTok) => {
+    const parts = [t != null ? `${fmtT(t)}トークン` : null, f != null ? `5時間 ${fmtPct(f)}` : null, w != null ? `週 ${fmtPct(w)}` : null].filter(Boolean);
+    return el('div', 'pn-est-line', `${label} ${parts.length ? parts.join(' / ') : '未入力'}`);
+  };
+  function renderEstimates() {
+    const list = snap?.estimates;
+    if (!Array.isArray(list)) { es_.hidden = true; return; }
+    es_.hidden = false;
+    const sig = JSON.stringify(list);
+    if (sig === esSig) return;
+    esSig = sig;
+    esList.replaceChildren(...(list.length ? list.slice().reverse().map((e) => {
+      const li = el('li', `pn-card pn-est-card${e.done ? ' done' : ''}`);
+      li.append(el('div', 'pn-card-title', e.title));
+      li.append(line('予想', e.tokens, e.fiveHourPct, e.weekPct));
+      if (e.actualTokens != null || e.actualFiveHourPct != null || e.actualWeekPct != null) {
+        li.append(line('実績', e.actualTokens, e.actualFiveHourPct, e.actualWeekPct));
+        const d = [ratio(e.actualTokens, e.tokens) && `トークン ${ratio(e.actualTokens, e.tokens)}`, ratio(e.actualFiveHourPct, e.fiveHourPct) && `5時間 ${ratio(e.actualFiveHourPct, e.fiveHourPct)}`, ratio(e.actualWeekPct, e.weekPct) && `週 ${ratio(e.actualWeekPct, e.weekPct)}`].filter(Boolean);
+        li.append(el('div', 'pn-est-line pn-est-diff', `差(実績÷予想) ${d.length ? d.join(' / ') : '比べられません'}`));
+      } else li.append(el('div', 'pn-est-line pn-est-wait', e.done ? '実績なし' : '実績待ち'));
+      if (e.note) li.append(el('div', 'pn-card-meta', e.note));
+      return li;
+    }) : [el('li', 'pn-empty', 'まだ見積もりはありません')]));
+  }
+
+  mount.append(dv, es_, tk);
 
   let snap = null;
   let dvSig = '';
@@ -342,7 +378,7 @@
     if (atTop) tkList.scrollTop = 0;
   }
 
-  function render() { renderDeliverables(); renderTalk(); }
+  function render() { renderDeliverables(); renderEstimates(); renderTalk(); }
 
   let es;
   function connect() {

@@ -121,3 +121,10 @@
 .tts-cfg input { width: 90px; font: inherit; padding: 2px 6px; border: 1px solid var(--line); border-radius: 6px; }
 .tts-cfg .note { margin: 4px 0 0; }
 [hidden].tts-credit, [hidden].tts-hint, [hidden].tts-cfg { display: none; }
+
+/* 作業見積もり */
+.pn-est-list { max-height: 34vh; }
+.pn-est-line { font-size: 11px; color: var(--ink); overflow-wrap: anywhere; margin-top: 2px; line-height: 1.45; font-variant-numeric: tabular-nums; }
+.pn-est-diff { font-weight: bold; color: #6b55b8; }
+.pn-est-wait { color: var(--ink-soft); }
+.pn-est-note { font-size: 10px; color: var(--ink-soft); margin: 4px 0 0; }
