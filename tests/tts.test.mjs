@@ -92,3 +92,29 @@ test('画面: 既定OFF・スイッチと設定・クレジット欄があり、
   assert.ok(!/https?:\/\//.test(js));
   assert.ok(js.includes("fetch('/tts'") && js.includes('if (!isRemote)'));
 });
+
+test('/tts: 本文が null・配列・数値のJSONでも 400(500にしない)', async () => {
+  const s = await startTestServer({ port: 0, allowedRoot: dir, voicevoxUrl: 'http://127.0.0.1:9', ttsTimeoutMs: 1500 });
+  try { for (const b of ['null', '[]', '5', '"x"']) assert.equal((await post(s, b)).status, 400, b); } finally { await s.close(); }
+});
+
+test('/tts: VOICEVOX の応答が大きすぎる・リダイレクトなら 503', async () => {
+  const { createTts, WAV_MAX } = await import('../lib/tts.mjs');
+  let mode = 'big';
+  const mock = http.createServer((req, res) => {
+    const u = new URL(req.url, 'http://x');
+    if (mode === 'redirect') { res.writeHead(302, { Location: '/audio_query' }); res.end(); return; }
+    if (u.pathname === '/audio_query') { res.writeHead(200, J); res.end('{}'); return; }
+    res.writeHead(200, { 'Content-Type': 'audio/wav' });
+    const chunk = Buffer.alloc(1024 * 1024);
+    for (let i = 0; i <= WAV_MAX / chunk.length; i++) res.write(chunk); // chunked で上限超え
+    res.end();
+  });
+  await new Promise((r) => mock.listen(0, '127.0.0.1', r));
+  const t = createTts({ baseUrl: `http://127.0.0.1:${mock.address().port}` });
+  try {
+    await assert.rejects(t.synthesize('あ', 1));
+    mode = 'redirect';
+    await assert.rejects(t.synthesize('あ', 1));
+  } finally { mock.closeAllConnections(); mock.close(); }
+});

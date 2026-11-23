@@ -99,7 +99,8 @@ export function startServer({ port, host = '127.0.0.1', allowedRoot = path.join(
         if (size > TTS_BODY_MAX) { res.writeHead(413); res.end(); return; }
         let body;
         try { body = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { res.writeHead(400); res.end(); return; }
-        const text = body && typeof body === 'object' ? body.text : null;
+        if (!body || typeof body !== 'object' || Array.isArray(body)) { res.writeHead(400); res.end(); return; }
+        const text = body.text;
         const speaker = body.speaker === undefined ? 11 : body.speaker;
         if (typeof text !== 'string' || !text.trim()) { res.writeHead(400); res.end(); return; }
         if (text.length > TTS_TEXT_MAX) { res.writeHead(413); res.end(); return; }
