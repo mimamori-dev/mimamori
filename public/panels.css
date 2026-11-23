@@ -1,0 +1,106 @@
+/* 成果物ボード・部長の発言(#feed の中、回答掲示板の下) */
+.pn-mount { flex: none; display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+.pn-sec { padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.pn-sec[hidden] { display: none; }
+.pn-h { font-size: 13px; padding-bottom: 6px; display: flex; align-items: baseline; gap: 6px; }
+.pn-h small, .pn-talk summary small { font-weight: normal; font-size: 10px; color: var(--ink-soft); }
+.pn-dv-list { list-style: none; margin: 0; padding: 0 4px 0 0; display: flex; flex-direction: column; gap: 6px; max-height: 40vh; overflow-y: auto; scrollbar-width: thin; }
+.pn-empty { font-size: 11px; color: var(--ink-soft); padding: 4px 0; }
+.pn-card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 7px 9px; font-size: 11.5px; }
+.pn-card.new { border-color: #8c78d0; box-shadow: 0 0 0 2px rgba(140, 120, 208, 0.16); }
+.pn-card.done { opacity: 0.72; background: #f6f3fa; }
+.pn-card-top { display: flex; gap: 8px; align-items: flex-start; }
+.pn-ic { flex: none; width: 24px; height: 24px; border-radius: 7px; background: #efe9fb; color: #6b55b8; display: grid; place-items: center; font-size: 12px; font-weight: bold; }
+.pn-card-tx { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.pn-card-title { font-size: 12px; line-height: 1.35; overflow-wrap: anywhere; }
+.pn-card-meta { font-size: 10px; color: var(--ink-soft); overflow-wrap: anywhere; }
+.pn-card-note { font-size: 11px; overflow-wrap: anywhere; }
+.pn-card-act { display: flex; align-items: center; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+.pn-ok { font-size: 10.5px; color: #3f8d5a; margin-right: auto; }
+.pn-btn { font: inherit; font-size: 11.5px; border-radius: 999px; padding: 4px 12px; cursor: pointer; border: 1px solid #8c78d0; min-height: 26px; }
+.pn-btn.main { background: #8c78d0; color: #fff; }
+.pn-btn.ghost { background: #fff; color: #6b55b8; }
+.pn-btn:disabled { opacity: 0.5; cursor: default; }
+.pn-btn:focus-visible, .pn-more:focus-visible, .pn-talk summary:focus-visible { outline: 2px solid #8c78d0; outline-offset: 2px; }
+
+.pn-talk summary { cursor: pointer; font-size: 13px; font-weight: bold; list-style: none; display: flex; align-items: center; gap: 7px; padding: 2px 0 6px; }
+.pn-talk summary::-webkit-details-marker { display: none; }
+.pn-talk summary::before { content: ""; width: 0; height: 0; border-left: 6px solid #8a8399; border-top: 5px solid transparent; border-bottom: 5px solid transparent; transition: transform 0.15s; flex: none; }
+.pn-talk[open] summary::before { transform: rotate(90deg); }
+.pn-tk-list { list-style: none; margin: 0; padding: 0 4px 0 0; max-height: 24vh; overflow-y: auto; scrollbar-width: thin; display: flex; flex-direction: column; gap: 6px; }
+.pn-msg { background: #fbf8ff; border: 1px solid var(--line); border-radius: 12px 12px 12px 4px; padding: 6px 9px; font-size: 11.5px; line-height: 1.45; }
+.pn-msg-head { display: flex; gap: 6px; align-items: baseline; font-size: 11px; }
+.pn-msg-head small { font-size: 10px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.pn-msg-text { margin: 2px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.pn-msg-text.clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.pn-more { font: inherit; font-size: 10.5px; color: #6b55b8; background: none; border: 0; padding: 2px 0; cursor: pointer; text-decoration: underline; }
+.pn-btn.ok { background: #3f8d5a; border-color: #3f8d5a; color: #fff; }
+.pn-btn.ghost.on { background: #efe9fb; }
+.pn-btn.undo { background: #fff; color: #d9473f; border-color: #d9473f; font-weight: bold; }
+.pn-ng { font-size: 10.5px; color: #b5532e; margin-right: auto; }
+.pn-err { display: block; margin-top: 4px; font-size: 10.5px; color: #d9473f; }
+.pn-confirm { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: #effaf2; border: 1.5px solid #4fa56d; border-radius: 10px; padding: 3px 8px; font-size: 11.5px; color: #2f6b45; font-weight: bold; }
+.pn-confirm-tx { min-width: 0; overflow-wrap: anywhere; }
+.pn-rj { margin-top: 6px; display: flex; flex-direction: column; gap: 4px; }
+.pn-rj-l { font-size: 10.5px; color: var(--ink-soft); }
+.pn-rj-ta { width: 100%; box-sizing: border-box; resize: vertical; min-height: 40px; max-height: 110px; font: inherit; font-size: 12px; line-height: 1.4; color: inherit; background: #fbf8ff; border: 1px solid #c9bfe6; border-radius: 8px; padding: 4px 7px; overflow-wrap: anywhere; word-break: break-all; }
+.pn-rj-ta:focus { outline: 2px solid #8c78d0; outline-offset: 1px; background: #fff; }
+.pn-rj-ta:disabled { opacity: 0.6; cursor: not-allowed; }
+.pn-rj-row { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.pn-rj-count { font-size: 10.5px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.pn-rj-count.over { color: #d9473f; font-weight: bold; }
+.pn-fold-wrap { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+.pn-fold-wrap:empty { display: none; }
+.pn-fold summary { cursor: pointer; font-size: 11.5px; color: var(--ink-soft); padding: 2px 0; }
+.pn-fold .pn-dv-list { margin-top: 4px; max-height: 24vh; }
+
+@media (max-width: 760px) {
+  .pn-dv-list, .pn-tk-list { max-height: none; overflow: visible; }
+  .pn-btn { min-height: 36px; padding: 6px 14px; font-size: 13px; }
+}
+
+/* SNS用の欄: 未投稿は琥珀(目立つ)、投稿済みは緑(落ち着く) */
+.pn-sns .pn-h { gap: 4px; flex-wrap: wrap; }
+.pn-sns-list { max-height: 36vh; }
+.pn-sns-badge { display: inline-block; font-size: 10.5px; font-weight: bold; line-height: 1.5; border-radius: 999px; padding: 0 8px; align-self: flex-start; }
+.pn-sns-badge.pending { background: #f6a623; color: #3a2400; }
+.pn-sns-badge.rejected { background: #f7e3dc; color: #b5532e; border: 1px solid #e5b9a8; }
+.pn-sns-ngwrap { list-style: none; padding: 0; }
+.pn-sns-badge.posted { background: #e3f2e8; color: #2f6b45; border: 1px solid #b9dcc4; }
+.pn-card.sns.pending { border-color: #e39a12; box-shadow: 0 0 0 2px rgba(246, 166, 35, 0.2); }
+.pn-card.sns.posted { background: #f6faf7; opacity: 0.85; }
+.pn-sns-post { margin-top: 6px; background: #fffaf0; border: 1px dashed #e3c27a; border-radius: 8px; padding: 5px 8px; }
+.pn-card.posted .pn-sns-post { background: #f3f8f4; border-color: #b9dcc4; }
+.pn-sns-text { margin: 0; font-size: 11.5px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
+.pn-sns-bar { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.pn-sns-bar small { font-size: 10px; color: var(--ink-soft); }
+.pn-sns-expire { flex-basis: 100%; font-size: 10.5px; color: #2f6b45; }
+.pn-sns-msg { flex: 1; min-width: 0; font-size: 10.5px; color: #8a5a00; overflow-wrap: anywhere; }
+.pn-btn.amber { background: #f6a623; border-color: #e39a12; color: #3a2400; font-weight: bold; }
+.pn-sns-err:empty { display: none; }
+
+/* SNS用: 画面上部の常設ボタン(右の通知欄の外)と、右に重ねて開く専用ドロワー */
+.pn-sns-btn { flex: none; align-self: flex-end; margin: 0 4px 8px 0; display: inline-flex; align-items: center; gap: 8px; border: 1.5px solid #8c78d0; background: #fff; color: #5b49a8; border-radius: 16px; padding: 4px 12px; font: inherit; font-size: 13px; font-weight: bold; cursor: pointer; }
+.pn-sns-btn[hidden] { display: none; }
+.pn-sns-n { min-width: 22px; text-align: center; border-radius: 999px; padding: 0 7px; font-size: 13px; background: #ece8f3; color: var(--ink-soft); }
+.pn-sns-btn.has { border-color: #e39a12; background: #fff4d6; color: #3a2400; box-shadow: 0 0 0 3px rgba(246, 166, 35, 0.3); }
+.pn-sns-btn.has .pn-sns-n { background: #f6a623; color: #3a2400; }
+.pn-sns-btn:focus-visible, .pn-sns-x:focus-visible { outline: 2px solid #8c78d0; outline-offset: 2px; }
+.pn-sns-drawer { z-index: 30; top: var(--gap); right: var(--gap); bottom: var(--gap); width: min(460px, 60vw); padding: 12px 14px; display: flex; flex-direction: column; box-shadow: 0 6px 28px rgba(80, 60, 120, 0.3); background: rgba(255, 255, 255, 0.97); }
+.pn-sns-drawer[hidden] { display: none; }
+.pn-sns-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding-bottom: 8px; }
+.pn-sns-top .pn-h { font-size: 15px; padding: 0; flex-wrap: wrap; }
+.pn-sns-x { border: 1px solid var(--line); background: #fff; border-radius: 8px; font: inherit; font-size: 13px; padding: 3px 12px; cursor: pointer; flex: none; }
+.pn-sns-drawer .pn-sns-list { flex: 1; max-height: none; }
+.pn-sns-drawer .pn-card { font-size: 13px; }
+.pn-sns-drawer .pn-card-title { font-size: 13.5px; }
+.pn-sns-drawer .pn-card-meta, .pn-sns-drawer .pn-fold summary { font-size: 12px; }
+.pn-sns-drawer .pn-sns-text { font-size: 13px; }
+.pn-sns-drawer .pn-sns-badge { font-size: 12px; }
+.pn-sns-drawer .pn-sns-bar small, .pn-sns-drawer .pn-sns-expire, .pn-sns-drawer .pn-sns-msg, .pn-sns-drawer .pn-err { font-size: 12px; }
+.pn-sns-drawer .pn-btn { font-size: 13px; min-height: 30px; }
+@media (max-width: 760px) {
+  /* スマホ(閲覧専用): 件数バッジのボタンだけ。押しても開かない */
+  .pn-sns-btn { align-self: auto; margin: 0 0 8px; cursor: default; }
+  .pn-sns-drawer { display: none !important; }
+}

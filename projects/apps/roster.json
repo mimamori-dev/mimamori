@@ -1,0 +1,12 @@
+{
+  "company": "アプリ作成プロジェクト",
+  "members": [
+    {
+      "type": "bucho",
+      "nickname": "部長",
+      "name": "部長",
+      "dept": "会議テーブル",
+      "color": "#f2c879"
+    }
+  ]
+}

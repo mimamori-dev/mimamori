@@ -1,0 +1,147 @@
+{
+  "company": "サンプルプロジェクト",
+  "members": [
+    {
+      "type": "bucho",
+      "nickname": "ムサシ部長",
+      "name": "部長",
+      "dept": "会議テーブル",
+      "color": "#f2c879"
+    },
+    {
+      "type": "report-writer",
+      "nickname": "ミナトくん",
+      "name": "レポート作成担当",
+      "dept": "制作部",
+      "color": "#8fc7e8"
+    },
+    {
+      "type": "video-producer",
+      "nickname": "ソラくん",
+      "name": "動画作成担当",
+      "dept": "制作部",
+      "color": "#b6a4e6"
+    },
+    {
+      "type": "numbers-checker",
+      "nickname": "カズくん",
+      "name": "数値検証担当",
+      "dept": "検証部",
+      "color": "#9bd8a8"
+    },
+    {
+      "type": "domain-reviewer",
+      "nickname": "レビューさん",
+      "name": "専門分野レビュー担当",
+      "dept": "検証部",
+      "color": "#f0a6a6"
+    },
+    {
+      "type": "cost-auditor",
+      "nickname": "ゼニオくん",
+      "name": "費用・制度の校閲担当",
+      "dept": "検証部",
+      "color": "#e8c0e0"
+    },
+    {
+      "type": "deliverable-reviewer",
+      "nickname": "カナさん",
+      "name": "成果物チェック担当",
+      "dept": "検証部",
+      "color": "#f2d49b"
+    },
+    {
+      "type": "privacy-checker",
+      "nickname": "マモルくん",
+      "name": "公開物の情報漏えいチェック担当",
+      "dept": "検証部",
+      "color": "#a9c4f0"
+    },
+    {
+      "type": "compliance-checker",
+      "nickname": "ノリさん",
+      "name": "規約・安全チェック担当",
+      "dept": "検証部",
+      "color": "#c9e3a0"
+    },
+    {
+      "type": "pc-impact-checker",
+      "nickname": "ヒロトさん",
+      "name": "環境影響チェック担当",
+      "dept": "環境影響チェック部",
+      "color": "#8fd0c0"
+    },
+    {
+      "type": "access-auditor",
+      "nickname": "サトルくん",
+      "name": "アクセス審査担当",
+      "dept": "アクセス審査部",
+      "color": "#e0b070"
+    },
+    {
+      "type": "sns-writer",
+      "nickname": "ツバサくん",
+      "name": "SNS担当",
+      "dept": "SNS部",
+      "color": "#7fd0d8"
+    },
+    {
+      "type": "implementer",
+      "seat": "implementer",
+      "types": [
+        "implementer"
+      ],
+      "nickname": "タクミくん",
+      "name": "実装担当",
+      "dept": "dev",
+      "color": "#e8b27a"
+    },
+    {
+      "type": "ui-builder",
+      "seat": "ui-builder",
+      "types": [
+        "ui-builder"
+      ],
+      "nickname": "ミユさん",
+      "name": "画面・動き担当",
+      "dept": "dev",
+      "color": "#f2a0c0"
+    },
+    {
+      "type": "qa-tester",
+      "seat": "qa-tester",
+      "types": [
+        "qa-tester"
+      ],
+      "nickname": "ミルくん",
+      "name": "動作確認担当",
+      "dept": "dev",
+      "color": "#a8d6c4"
+    },
+    {
+      "type": "claude-code-guide",
+      "seat": "researcher",
+      "types": [
+        "claude-code-guide",
+        "web-fetch",
+        "Explore",
+        "Plan"
+      ],
+      "nickname": "リサさん",
+      "name": "調査担当",
+      "dept": "research",
+      "color": "#8fb8e8"
+    },
+    {
+      "type": "general-purpose",
+      "seat": "general-purpose",
+      "types": [
+        "general-purpose"
+      ],
+      "nickname": "ユウくん",
+      "name": "万能担当",
+      "dept": "research",
+      "color": "#c8c8a0"
+    }
+  ]
+}

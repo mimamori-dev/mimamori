@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mimamori</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/static/style.css">
+<script type="importmap">
+{ "imports": { "three": "/vendor/three/three.module.js", "three/addons/": "/vendor/addons/" } }
+</script>
+<link rel="stylesheet" href="/static/panels.css">
+<script type="module" src="/static/office.js"></script>
+<script defer src="/static/panels.js"></script>
+</head>
+<body>
+<div id="stage"></div>
+
+<div id="leftcol">
+<section id="hud" class="panel" aria-label="今回の作業量">
+  <div class="hud-head">
+    <div class="logo" aria-hidden="true"><span></span><span></span><span></span></div>
+    <div>
+      <h1 id="company">Mimamori</h1>
+      <p class="sub">Claude Codeの作業を見守る(非公式ツール) <span id="conn" class="conn">接続中…</span></p>
+    </div>
+  </div>
+  <dl class="stats">
+    <div><dt>ツール実行</dt><dd><b id="st-tools">0</b><small>回</small></dd></div>
+    <div><dt>呼んだ担当</dt><dd><b id="st-delegates">0</b><small>人</small></dd></div>
+    <div><dt>経過時間</dt><dd><b id="st-elapsed">—</b></dd></div>
+    <div><dt>トークン数</dt><dd><b id="st-tokens">—</b></dd></div>
+  </dl>
+  <div id="quota" class="quota" aria-label="利用枠"></div>
+  <div class="cost">
+    <div class="cost-row"><span class="cost-label">金額の目安</span><b id="st-cost">—</b></div>
+    <p id="st-rate" class="rate">為替は仮のレート</p>
+    <p class="note">API料金に直した目安。定額プランの実際の請求額ではありません</p>
+    <p id="st-unpriced" class="warn" hidden>一部単価未登録</p>
+  </div>
+  <details id="phone" hidden>
+    <summary>スマホで見る</summary>
+    <p id="phone-off" class="note" hidden>スマホ用の遠隔は無効です。環境変数 OFFICE_REMOTE=1 で有効にできます(Tailscale が必要)</p>
+    <img id="qr" alt="スマホ用QRコード" width="150" height="150">
+    <p id="phone-on" class="note">スマホの Tailscale をオンにして、カメラで読み取ります。合言葉入りなので、このQRや画面を人に見せないでください</p>
+  </details>
+</section>
+
+<section id="instr" class="panel" aria-label="社長の指示">
+  <div class="in-head"><h2>社長の指示</h2><span id="in-wait" class="in-wait" hidden></span></div>
+  <ul id="in-list" class="in-list"><li class="in-empty">まだ指示はありません。ターミナルで部長に指示すると、ここに出ます</li></ul>
+</section>
+
+<section id="explorer" class="panel" aria-label="フォルダ構成" hidden>
+  <button id="ex-toggle" class="ex-toggle" type="button" aria-expanded="false"><span class="ex-caret" aria-hidden="true"></span>フォルダ構成<small>名前だけ・中身は見せません</small></button>
+  <div id="ex-body" class="ex-body" hidden>
+    <p id="ex-path" class="ex-path"></p>
+    <ul id="ex-list" class="ex-list"></ul>
+  </div>
+</section>
+</div>
+
+<section id="decision" class="panel" aria-label="社長のご判断" hidden>
+  <div class="dc-head"><b class="dc-title">社長、これをご判断ください</b><span id="dc-more" class="dc-more" hidden></span></div>
+  <p id="dc-header" class="dc-header"></p>
+  <p id="dc-question" class="dc-question"></p>
+  <ul id="dc-options" class="dc-options"></ul>
+  <div id="dc-other" class="dc-other" hidden>
+    <label for="dc-other-text" class="dc-other-l">その他(自由に入力)</label>
+    <textarea id="dc-other-text" class="dc-other-text" rows="2" placeholder="選択肢にない答えや補足を書いてください" autocomplete="off"></textarea>
+    <div class="dc-other-row"><span id="dc-other-count" class="dc-other-count">0/500</span><button id="dc-other-send" type="button" class="dc-other-send" disabled>この内容で答える</button></div>
+  </div>
+  <div id="dc-confirm" class="dc-confirm" role="status" hidden><span id="dc-chosen" class="dc-chosen"></span><button id="dc-cancel" type="button" class="dc-cancel"></button></div>
+  <p id="dc-note" class="dc-note"></p>
+  <p id="dc-others" class="dc-others" hidden></p>
+</section>
+
+<section id="waitbar" class="panel" aria-label="確認待ちの内容" hidden>
+  <div class="wb-row"><b id="wb-kind" class="wb-kind"></b><span id="wb-text" class="wb-text"></span><small id="wb-since" class="wb-since"></small></div>
+  <p id="wb-detail" class="wb-detail" hidden></p>
+</section>
+
+<section id="board" class="panel" aria-label="案件ボード">
+  <div class="col" data-col="queue"><h2><i class="c-queue"></i>タスク振り待ち<span class="count">0</span></h2><ul></ul></div>
+  <div class="col" data-col="idle"><h2><i class="c-idle"></i>待機<small>手の空いている担当</small><span class="count">0</span></h2><ul></ul></div>
+  <div class="col" data-col="working"><h2><i class="c-working"></i>作業中<span class="count">0</span></h2><ul></ul></div>
+  <div class="col" data-col="reviewing"><h2><i class="c-reviewing"></i>レビュー中<span class="count">0</span></h2><ul></ul></div>
+  <div class="col" data-col="waiting"><h2><i class="c-waiting"></i>確認待ち<span class="count">0</span></h2><ul></ul></div>
+  <div class="col" data-col="done"><h2><i class="c-done"></i>完了<span class="count">0</span></h2><ul></ul></div>
+</section>
+
+<aside id="feed" class="panel" aria-label="通知">
+  <section id="answers" class="answers" aria-label="社長のご相談への回答" hidden>
+    <h2>社長のご相談への回答 <small>新しい順</small></h2>
+    <ul id="an-list"></ul>
+  </section>
+  <details id="activity" class="activity" hidden>
+    <summary><span>活動ログ</span><small id="ac-count"></small></summary>
+    <ul id="ac-list" class="ac-list"></ul>
+  </details>
+  <h2>通知 <small>新しい順</small></h2>
+  <ol id="feed-list"></ol>
+</aside>
+
+<form id="inbox" aria-label="部長への指示" hidden>
+  <section id="cmd" class="cmd panel" aria-label="コマンド" hidden>
+    <div class="cmd-head"><b>コマンド</b><small>決まった確認だけ実行できます</small><button id="cmd-close" type="button" class="cmd-x" aria-label="閉じる">閉じる</button></div>
+    <ul id="cmd-list" class="cmd-list"></ul>
+    <div id="cmd-result" class="cmd-result" hidden>
+      <p id="cmd-title" class="cmd-title"></p>
+      <pre id="cmd-out" class="cmd-out" tabindex="0"></pre>
+    </div>
+  </section>
+  <p id="ib-status" class="ib-status"><i></i><span></span></p>
+  <p id="ib-mnote" class="ib-mnote" hidden>スマホの音声は未対応(キーボードのマイクを使ってください)</p>
+  <p id="ib-error" class="ib-error" role="alert" hidden></p>
+  <div id="ib-voice" class="ib-voice" hidden>
+    <span id="ib-vnote" class="ib-vnote" aria-live="polite"></span>
+  </div>
+  <div id="ib-consent" class="ib-consent" role="alertdialog" aria-label="ブラウザ認識の確認" hidden>
+    <p>音声がブラウザの提供元のサーバーに送られます。話す内容にご注意ください。使いますか</p>
+    <div><button id="ib-consent-yes" type="button">使う</button><button id="ib-consent-no" type="button">使わない</button></div>
+  </div>
+  <div class="ib-bar panel">
+    <textarea id="ib-text" rows="1" maxlength="4000" placeholder="部長への指示を入力(Enterで送信・Shift+Enterで改行)" aria-label="部長への指示"></textarea>
+    <button id="ib-mic" type="button" hidden aria-pressed="false" aria-label="音声で入力(押して話す、もう一度押して停止)" title="押して話す、もう一度押して停止"><i class="mic-dot" aria-hidden="true"></i><span class="mic-label">🎤 音声</span></button>
+    <button id="ib-cmd" type="button" hidden aria-expanded="false" aria-controls="cmd">コマンド</button>
+    <button id="ib-send" type="submit">送る</button>
+  </div>
+</form>
+</body>
+</html>

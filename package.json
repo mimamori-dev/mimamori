@@ -1,0 +1,22 @@
+{
+  "name": "mimamori",
+  "version": "0.1.0",
+  "description": "Claude Code の作業をブラウザ上の3Dオフィスで見守るローカル専用ツール(非公式)",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test",
+    "start": "node office-server.mjs",
+    "doctor": "node tools/doctor.mjs",
+    "new-project": "node tools/new-project.mjs",
+    "install-hooks": "node tools/install-hooks.mjs"
+  },
+  "dependencies": {
+    "qrcode-generator": "2.0.4",
+    "three": "0.186.1"
+  }
+}
