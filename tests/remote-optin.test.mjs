@@ -54,6 +54,24 @@ test('環境変数が無ければ startServer の既定は無効', async () => {
   }
 });
 
+test('OFFICE_REMOTE_DIR があれば合言葉はそこに作り、本体フォルダには作らない', async () => {
+  const d = fs.mkdtempSync(path.join(dir, 'home-'));
+  const r = fs.mkdtempSync(path.join(dir, 'rdir-'));
+  const s = await startTestServer({ port: 0, allowedRoot: dir, remoteAllowed: true });
+  const log = console.log;
+  console.log = () => {};
+  try {
+    const t = startRemoteWatcher(s, d, { env: { OFFICE_REMOTE: '1', OFFICE_REMOTE_DIR: r }, findIp: () => '127.0.0.1', port: 0 });
+    assert.equal(await t.first, true);
+    clearInterval(t);
+    assert.equal(fs.existsSync(path.join(r, 'remote.json')), true);
+    assert.equal(fs.existsSync(path.join(d, 'remote.json')), false);
+  } finally {
+    console.log = log;
+    await s.close();
+  }
+});
+
 test('OFFICE_REMOTE=1 なら Tailscale の宛先に口を開き、合言葉を作る', async () => {
   const d = fs.mkdtempSync(path.join(dir, 'on-'));
   const s = await startTestServer({ port: 0, allowedRoot: dir, remoteAllowed: true });

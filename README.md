@@ -110,7 +110,7 @@ export default {
 
 ## スマホから見る・指示を送る
 
-外出先のスマホから、画面の閲覧と「指示の送信」だけができます。**この機能は既定で無効**で、環境変数 `OFFICE_REMOTE=1` を付けて起動したときだけ有効になります(Tailscale が必要)。無効のときは Tailscale を探さず、遠隔の口も開かず、合言葉ファイル(`remote.json`)も作りません。有効にすると、この PC の Tailscale の IP(100.64.0.0/10)にだけ口が開きます。
+外出先のスマホから、画面の閲覧と「指示の送信」だけができます。**この機能は既定で無効**で、環境変数 `OFFICE_REMOTE=1` を付けて起動したときだけ有効になります(Tailscale が必要)。無効のときは Tailscale を探さず、遠隔の口も開かず、合言葉ファイル(`remote.json`)も作りません。有効にすると、この PC の Tailscale の IP(100.64.0.0/10)にだけ口が開きます。合言葉ファイル(`remote.json`)の置き場は環境変数 `OFFICE_REMOTE_DIR` で変えられます(OneDrive 等の同期フォルダの外に置きたいとき。未指定なら本体フォルダ)。
 
 1. PC とスマホの両方に Tailscale を入れ、同じアカウントでログインします
 2. `OFFICE_REMOTE=1` を付けてサーバーを起動します(PowerShell なら `$env:OFFICE_REMOTE=1; npm start`、bash なら `OFFICE_REMOTE=1 npm start`)。Tailscale が見つかると、PC の画面に QR が出ます(後から Tailscale を起動しても約30秒で拾います)。Tailscale が入っていない・ログインしていないときは QR は出ず、起動は通常どおり続きます(30秒ごとに探し直します)
