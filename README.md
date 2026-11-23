@@ -91,7 +91,10 @@ export default {
 
 - 本体のどの経路にも一致しない要求だけが `routes` に回ります(本体の経路は上書きできません)。`'GET /パス'`・`'POST /パス'` の形です。
 - handler は `(req, res, ctx)`。`ctx` は `info`・`inbox`・`state`・`now`・`json`・`readSmallJson`・`enqueueInstruction`・`opener`・`crossSite(req)`(他サイト由来の要求なら true。本体の操作と同じ判定)・`openGate()`(「開く」操作の最小間隔。通れば true、間隔内は false。本体の「開く」と時刻を共有)・`validOtherText(text, max)`(本体の自由入力の検証。不正なら null)・`extDir`・`dataDir`(`<フォルダ>/data`)です。
-- 読み込みや handler が失敗しても、ターミナルに警告を出すだけで本体は動き続けます(handler の失敗は 500)。
+- 読み込みの失敗は、ターミナルに警告を出して拡張なしで続行します。handler の同期例外と Promise の失敗は捕まえて警告を出し、500 にします。ただし handler の中で `setTimeout` などに投げた非同期の例外は捕まえられません(本体が落ちることがあります)。
+- **信頼できる自分のフォルダだけを `OFFICE_EXT_DIR` に指定してください。** `ext.mjs` は本体と同じ権限で動き、`opener`・`state` にも触れます。
+- 拡張の POST 経路には、本体が自動で `crossSite` を適用します(他サイト由来は 403)。GET は副作用を持たない前提で自動の検査はありません。副作用のある GET は、自分で `ctx.crossSite(req)` を呼んでください。
+- スマホ遠隔: `remoteAllowed` に POST を書いても、遠隔からの POST は常に 403 です。遠隔の画面にパネルを出すには、`'GET /ext/panels.js'`(CSS も使うなら `'GET /ext/panels.css'`)を `remoteAllowed` に載せてください。
 
 ## スマホから見る・指示を送る
 

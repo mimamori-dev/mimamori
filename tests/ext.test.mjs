@@ -29,7 +29,7 @@ const GOOD = `export default {
   panelsJs: true,
 };`;
 const withExt = async (dir, fn) => {
-  const s = await startTestServer({ port: 0, allowedRoot: tmp, ...(dir ? { extDir: dir } : {}) });
+  const s = await startTestServer({ port: 0, allowedRoot: tmp, extDir: dir ?? null }); // null で環境変数 OFFICE_EXT_DIR に左右されない
   try { await fn(s); } finally { await s.close(); }
 };
 const JSONH = { 'Content-Type': 'application/json' };
@@ -115,4 +115,22 @@ test('ctx: crossSite・validOtherText・openGate(最小間隔)', async () => {
     t += 1001;
     assert.equal(JSON.parse((await raw(s.port, '/ext/gate')).text).ok, true);
   } finally { await s.close(); }
+});
+
+test('拡張の POST は他サイト Origin なら 403(readSmallJson を使わない経路でも)', async () => {
+  const d = mk('xsite', `export default { routes: { 'POST /ext/raw': (req, res) => { res.writeHead(200); res.end('done'); } } };`);
+  await withExt(d, async (s) => {
+    assert.equal((await raw(s.port, '/ext/raw', { method: 'POST', headers: { ...JSONH, Origin: 'http://evil.example' }, body: '{}' })).status, 403);
+    assert.equal((await raw(s.port, '/ext/raw', { method: 'POST', headers: JSONH, body: '{}' })).status, 200);
+  });
+});
+
+test('panels: public 内のシンボリックリンクで外へ出られない(権限不足なら skip)', async (t) => {
+  const d = mk('sym', GOOD, { 'secret.txt': 'top' });
+  try { fs.symlinkSync(path.join(d, 'secret.txt'), path.join(d, 'public', 'panels.js')); } catch { t.skip('シンボリックリンクを作れない環境(権限不足)'); return; }
+  await withExt(d, async (s) => {
+    const r = await raw(s.port, '/ext/panels.js');
+    assert.equal(r.status, 404);
+    assert.notEqual(r.text, 'top');
+  });
 });

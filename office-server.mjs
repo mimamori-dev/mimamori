@@ -180,6 +180,8 @@ export function startServer({ port, host = '127.0.0.1', allowedRoot = path.join(
       return true;
     }
     if (!proj) { notFound(res); return true; }
+    // POST は副作用を持つので、他サイト由来は本体側で断る(GET は拡張が必要なら ctx.crossSite を自分で呼ぶ)
+    if (req.method === 'POST' && crossSite(req)) { res.writeHead(403); res.end(); return true; }
     const ctx = { info: proj.info, inbox: proj.inbox, state: proj.state, now, json, readSmallJson, enqueueInstruction, opener, crossSite, openGate: proj.openGate, validOtherText, extDir: extRoot, dataDir: path.join(extRoot, 'data') };
     const fail = (e) => { warn(`${key} が失敗しました: ${e?.message ?? e}`); if (!res.headersSent) res.writeHead(500); res.end(); };
     try { Promise.resolve(fn(req, res, ctx)).catch(fail); } catch (e) { fail(e); }
