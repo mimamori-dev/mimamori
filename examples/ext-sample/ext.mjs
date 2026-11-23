@@ -8,6 +8,8 @@ export default {
     'GET /ext/hello': (req, res, ctx) => ctx.json(res, 200, { hello: 'world', project: ctx.info.id }),
     // 小さな JSON を受け取り、dataDir に保存する
     'POST /ext/note': (req, res, ctx) => ctx.readSmallJson(req, res, 4096, (body) => {
+      // readSmallJson は他サイト由来を既に断る。独自に読む経路では ctx.crossSite(req) を使う
+      // ctx.validOtherText(text, max) で自由入力を検証、ctx.openGate() で「開く」操作の連打を抑える
       fs.mkdirSync(ctx.dataDir, { recursive: true });
       fs.writeFileSync(path.join(ctx.dataDir, 'note.json'), JSON.stringify({ text: String(body.text ?? ''), at: ctx.now() }));
       ctx.json(res, 200, { ok: true });

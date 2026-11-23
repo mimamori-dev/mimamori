@@ -21,6 +21,8 @@ const GOOD = `export default {
     'POST /ext/echo': (req, res, ctx) => ctx.readSmallJson(req, res, 1024, (b) => ctx.json(res, 200, b)),
     'GET /ext/boom': () => { throw new Error('x'); },
     'GET /ext/aboom': async () => { throw new Error('y'); },
+    'GET /ext/cs': (req, res, ctx) => ctx.json(res, 200, { cross: ctx.crossSite(req), v: ctx.validOtherText('  hi ', 10), bad: ctx.validOtherText(5, 10), long: ctx.validOtherText('abcdef', 3) }),
+    'GET /ext/gate': (req, res, ctx) => ctx.json(res, 200, { ok: ctx.openGate() }),
     'GET /ext/secret': (req, res, ctx) => ctx.json(res, 200, { s: 1 }),
   },
   remoteAllowed: ['GET /ext/hello'],
@@ -97,4 +99,20 @@ test('遠隔: 許可リストに無い拡張の経路は 403、あるものだ�
     assert.equal((await raw(rp, '/ext/echo', { method: 'POST', headers: { ...JSONH, Host: `127.0.0.1:${rp}`, Cookie: `office_key=${TOKEN}` }, body: '{}' })).status, 403);
     assert.equal((await raw(rp, '/ext/hello', { headers: { Host: `127.0.0.1:${rp}` } })).status, 403); // 合言葉なし
   });
+});
+
+test('ctx: crossSite・validOtherText・openGate(最小間隔)', async () => {
+  const d = mk('ctx', GOOD);
+  let t = 1_000_000;
+  const s = await startTestServer({ port: 0, allowedRoot: tmp, extDir: d, now: () => t, openMinIntervalMs: 1000 });
+  try {
+    const a = JSON.parse((await raw(s.port, '/ext/cs')).text);
+    assert.equal(a.cross, false); assert.equal(a.v, 'hi'); assert.equal(a.bad, null); assert.equal(a.long, null);
+    const b = JSON.parse((await raw(s.port, '/ext/cs', { headers: { Origin: 'http://evil.example' } })).text);
+    assert.equal(b.cross, true);
+    assert.equal(JSON.parse((await raw(s.port, '/ext/gate')).text).ok, true);
+    assert.equal(JSON.parse((await raw(s.port, '/ext/gate')).text).ok, false);
+    t += 1001;
+    assert.equal(JSON.parse((await raw(s.port, '/ext/gate')).text).ok, true);
+  } finally { await s.close(); }
 });

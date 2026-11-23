@@ -180,7 +180,7 @@ export function startServer({ port, host = '127.0.0.1', allowedRoot = path.join(
       return true;
     }
     if (!proj) { notFound(res); return true; }
-    const ctx = { info: proj.info, inbox: proj.inbox, state: proj.state, now, json, readSmallJson, enqueueInstruction, opener, extDir: extRoot, dataDir: path.join(extRoot, 'data') };
+    const ctx = { info: proj.info, inbox: proj.inbox, state: proj.state, now, json, readSmallJson, enqueueInstruction, opener, crossSite, openGate: proj.openGate, validOtherText, extDir: extRoot, dataDir: path.join(extRoot, 'data') };
     const fail = (e) => { warn(`${key} が失敗しました: ${e?.message ?? e}`); if (!res.headersSent) res.writeHead(500); res.end(); };
     try { Promise.resolve(fn(req, res, ctx)).catch(fail); } catch (e) { fail(e); }
     return true;
@@ -406,6 +406,8 @@ export function startServer({ port, host = '127.0.0.1', allowedRoot = path.join(
     const checkPath = (p) => (info.root ? checkDeliverablePath(info.root, p) : { ok: false, reason: 'このプロジェクトの成果物の場所は未設定です' });
     const removeTimers = new Map();
     let lastOpenAt = -Infinity;
+    // 拡張用: 本体の「開く」と同じ最小間隔(時刻も共有)。通れば true で時刻を更新、間隔内なら false
+    const openGate = () => { const t = now(); if (t - lastOpenAt < openMinIntervalMs) return false; lastOpenAt = t; return true; };
     const deliverableEvent = () => ({ ts: now(), kind: 'deliverable', agentId: null, agentType: null, text: '', title: '' });
     // SNS用の「投稿済み」は postedAt から snsPostedGraceMs 後に掲示板から消す(未投稿に戻せば予約は取り消し)
     const snsTimers = new Map();
@@ -637,6 +639,7 @@ export function startServer({ port, host = '127.0.0.1', allowedRoot = path.join(
       info,
       state,
       inbox,
+      openGate,
       snap,
       ingest,
       handleInstructionPost, handleAnswerRead, handleDecisionPost, handleAnswerPost, handleAnswerCancel, handleDecisionResolve, handleDeliverablePost, handleDeliverableAct, handleInstructionNext,

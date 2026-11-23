@@ -90,7 +90,7 @@ export default {
 ```
 
 - 本体のどの経路にも一致しない要求だけが `routes` に回ります(本体の経路は上書きできません)。`'GET /パス'`・`'POST /パス'` の形です。
-- handler は `(req, res, ctx)`。`ctx` は `info`・`inbox`・`state`・`now`・`json`・`readSmallJson`・`enqueueInstruction`・`opener`・`extDir`・`dataDir`(`<フォルダ>/data`)です。
+- handler は `(req, res, ctx)`。`ctx` は `info`・`inbox`・`state`・`now`・`json`・`readSmallJson`・`enqueueInstruction`・`opener`・`crossSite(req)`(他サイト由来の要求なら true。本体の操作と同じ判定)・`openGate()`(「開く」操作の最小間隔。通れば true、間隔内は false。本体の「開く」と時刻を共有)・`validOtherText(text, max)`(本体の自由入力の検証。不正なら null)・`extDir`・`dataDir`(`<フォルダ>/data`)です。
 - 読み込みや handler が失敗しても、ターミナルに警告を出すだけで本体は動き続けます(handler の失敗は 500)。
 
 ## スマホから見る・指示を送る
