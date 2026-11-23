@@ -44,8 +44,9 @@ npm start
 
 ```
 echo '{"title":"調査","tokens":50000,"fiveHourPct":4,"weekPct":1}' | node tools/post-estimate.mjs   # 登録(idが出る)
-echo '{"actualTokens":70000,"actualFiveHourPct":5}' | node tools/post-estimate.mjs --update e1   # 実績を足して完了にする
+echo '{"actualTokens":70000,"actualFiveHourPct":5}' | node tools/post-estimate.mjs --update e1   # 実績を足して完了にする(--keep-open を付けると完了にしない)
 ```
+見積もりの記録ファイル `data/estimates.jsonl` には件数の上限がありません(書き込めるのはPCの画面側だけ、1件4KBまで)。
 
 ### hookは何を変えるか・元に戻し方
 

@@ -102,6 +102,26 @@ test('遠隔(スマホ)は登録・更新とも 403', async () => {
   });
 });
 
+test('遠隔(スマホ)のSSEの最初のsnapshotには estimates(題・数値・メモ)が載らない', async () => {
+  await withServer(async (s) => {
+    assert.equal((await post(s, '/estimate', { title: '秘密の題', tokens: 123456, note: '秘密のメモ' })).status, 201);
+    const TOKEN = 'test-token-0123456789abcdef';
+    assert.equal(await s.enableRemote({ host: '127.0.0.1', token: TOKEN, port: 0 }), true);
+    const rp = s.remotePort();
+    const ac = new AbortController();
+    try {
+      const res = await fetch(`http://127.0.0.1:${rp}/events`, { headers: { Cookie: `office_key=${TOKEN}` }, signal: ac.signal });
+      assert.equal(res.status, 200);
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let buf = '';
+      while (!buf.includes('\n\n')) { const { done, value } = await reader.read(); if (done) break; buf += dec.decode(value, { stream: true }); }
+      assert.match(buf, /^event: snapshot/m);
+      assert.ok(!/estimates|秘密の題|秘密のメモ|123456/.test(buf));
+    } finally { ac.abort(); }
+  });
+});
+
 test('XSS: 題・メモは textContent で入れる(panels.js が HTML として解釈しない)', () => {
   const src = fs.readFileSync(new URL('../public/panels.js', import.meta.url), 'utf8');
   assert.ok(!/innerHTML|insertAdjacentHTML|outerHTML/.test(src));
