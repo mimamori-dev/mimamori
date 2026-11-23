@@ -43,7 +43,7 @@ export async function runDoctor({ projectDir = process.cwd(), env = process.env,
 
   const warns = [];
   let reg = null;
-  try { reg = loadProjects({ projectsDir: path.join(officeDir, 'projects'), legacyRosterPath: path.join(officeDir, 'roster.json'), defaultRoot: null, warn: (m) => warns.push(m) }); } catch (e) { warns.push(`[projects] 読み込み失敗: ${e.message}`); }
+  try { reg = loadProjects({ projectsDir: process.env.OFFICE_PROJECTS_DIR ? path.resolve(process.env.OFFICE_PROJECTS_DIR) : path.join(officeDir, 'projects'), legacyRosterPath: path.join(officeDir, 'roster.json'), defaultRoot: null, warn: (m) => warns.push(m) }); } catch (e) { warns.push(`[projects] 読み込み失敗: ${e.message}`); }
   add('projects', warns.length === 0 && reg !== null, reg ? `読めたもの: ${[...reg.keys()].join(', ')}${warns.length ? `(警告 ${warns.length} 件)` : ''}` : '読めませんでした');
 
   let cmd = null;

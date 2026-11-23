@@ -25,6 +25,8 @@ test('OFFICE_PROJECTS_DIR を指定すると、そのフォルダの名簿が読
     fs.writeFileSync(path.join(dir, 'demo', 'project.json'), JSON.stringify({ id: 'demo', name: '指定フォルダ版', color: '#fff', root: null }));
     fs.writeFileSync(path.join(dir, 'demo', 'roster.json'), JSON.stringify({ company: 'x', members: [] }));
     assert.deepEqual(await projectNames(dir), ['指定フォルダ版']);
-    assert.ok(!(await projectNames(undefined)).includes('指定フォルダ版'));
+    const dflt = await projectNames(undefined);
+    assert.ok(!dflt.includes('指定フォルダ版'));
+    assert.ok(dflt.length > 0); // 従来の projects/ の demo などが読まれる
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
