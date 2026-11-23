@@ -77,6 +77,22 @@ node tools/new-project.mjs <id>   # 例: node tools/new-project.mjs my-app
 
 `projects/_template/` を元に `projects/<id>/` を作ります。`id` は小文字英字で始まり、小文字英数字・`_`・`-`、32文字以内です。作ったあと `project.json`(`name`・`color`・`root`)と `roster.json`(名簿)を編集します。各項目の意味は `projects/_template/README.md` にあります。`root` はファイル一覧・成果物登録の基準フォルダ(`null` なら未設定)で、作業フォルダがこの下にある hook をそのプロジェクトに振り分けます。同梱の `projects/demo/`(サンプル)と `projects/apps/` が見本です。壊れた設定は、起動時のターミナルと `npm run doctor` に理由つきで警告が出ます(そのプロジェクトは読み込まれません)。
 
+## 拡張の差し込み口
+
+環境変数 `OFFICE_EXT_DIR` に、`ext.mjs` を置いたフォルダを指定すると、起動時に読み込みます(未指定なら何も変わりません)。見本は `examples/ext-sample/` です。
+
+```js
+export default {
+  routes: { 'GET /ext/hello': (req, res, ctx) => ctx.json(res, 200, { ok: true }) },
+  remoteAllowed: ['GET /ext/hello'], // スマホ遠隔で通す経路。載せない経路は全て 403
+  panelsJs: true, panelsCss: true,   // <フォルダ>/public/panels.js・panels.css を /ext/ で配信
+};
+```
+
+- 本体のどの経路にも一致しない要求だけが `routes` に回ります(本体の経路は上書きできません)。`'GET /パス'`・`'POST /パス'` の形です。
+- handler は `(req, res, ctx)`。`ctx` は `info`・`inbox`・`state`・`now`・`json`・`readSmallJson`・`enqueueInstruction`・`opener`・`extDir`・`dataDir`(`<フォルダ>/data`)です。
+- 読み込みや handler が失敗しても、ターミナルに警告を出すだけで本体は動き続けます(handler の失敗は 500)。
+
 ## スマホから見る・指示を送る
 
 外出先のスマホから、画面の閲覧と「指示の送信」だけができます。**この機能は既定で無効**で、環境変数 `OFFICE_REMOTE=1` を付けて起動したときだけ有効になります(Tailscale が必要)。無効のときは Tailscale を探さず、遠隔の口も開かず、合言葉ファイル(`remote.json`)も作りません。有効にすると、この PC の Tailscale の IP(100.64.0.0/10)にだけ口が開きます。

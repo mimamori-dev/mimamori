@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createState, applyEvent, snapshot, seatOfAgent, addLog, enqueueInstruction, markAssigningBubble, markAnswerRead, addDeliverable, markDeliverable, noteDeliverableOpened, beginDeliverableVerdict, confirmDeliverableVerdict, validOtherText, undoDeliverable, removeDeliverable, findDeliverable, restoreSnsDeliverable, setSnsPosted, resolveTerminalDecisions, POST_TEXT_MAX, addOfficeDecision, chooseDecision, chooseDecisionOther, cancelDecisionChoice, confirmDecision, resolveDecision, replyOpenDecisions } from './lib/state.mjs';
 import { createInbox, validText, BODY_MAX as INSTRUCTION_BODY_MAX } from './lib/inbox.mjs';
 import { shorten, clipInstruction, promptText } from './lib/describe.mjs';
@@ -51,7 +51,7 @@ const cookieOf = (req, name) => {
 // 「投稿済みにする」から掲示板のカードが自動で消えるまでの猶予(この間は「未投稿に戻す」で取り消せる)
 export const SNS_POSTED_GRACE_MS = 3 * 60 * 1000;
 
-export function startServer({ port, host = '127.0.0.1', allowedRoot = path.join(os.homedir(), '.claude', 'projects'), now = Date.now, waitMaxSec = 30, assignBubbleMs = 2500, treeRoot = PROJECT_ROOT, commands = null, commandTimeoutMs = 30_000, decisionGraceMs = 5000, deliverableGraceMs = 5000, snsPostedGraceMs = SNS_POSTED_GRACE_MS, openMinIntervalMs = 1000, opener = openWithDefaultApp, projectsDir = path.join(here, 'projects'), narrowTranscripts = false, snsFile = path.join(here, 'data', 'sns-queue.json'), remoteAllowed = isRemoteEnabled() } = {}) {
+export function startServer({ port, host = '127.0.0.1', allowedRoot = path.join(os.homedir(), '.claude', 'projects'), now = Date.now, waitMaxSec = 30, assignBubbleMs = 2500, treeRoot = PROJECT_ROOT, commands = null, commandTimeoutMs = 30_000, decisionGraceMs = 5000, deliverableGraceMs = 5000, snsPostedGraceMs = SNS_POSTED_GRACE_MS, openMinIntervalMs = 1000, opener = openWithDefaultApp, projectsDir = path.join(here, 'projects'), narrowTranscripts = false, snsFile = path.join(here, 'data', 'sns-queue.json'), remoteAllowed = isRemoteEnabled(), extDir = process.env.OFFICE_EXT_DIR || null } = {}) {
   const pricing = readJson('pricing.json');
   // treeRoot は demo(既定のプロジェクト)のルートを上書きする(テスト用)。ほかのプロジェクトのルートは project.json
   const registry = loadProjects({ projectsDir, legacyRosterPath: path.join(here, 'roster.json'), defaultRoot: treeRoot });
@@ -137,6 +137,55 @@ export function startServer({ port, host = '127.0.0.1', allowedRoot = path.join(
       res.end();
     }
   };
+  // 拡張の差し込み口(OFFICE_EXT_DIR/ext.mjs)。壊れていても本体は止めず、警告だけ出す
+  const warn = (msg) => console.warn(`Mimamori: 拡張の警告: ${msg}`);
+  const extRoot = extDir ? path.resolve(extDir) : null;
+  let ext = null; // { routes: Map('METHOD /path' -> fn), allowed: Set, panelsJs, panelsCss }
+  async function loadExt() {
+    if (!extRoot) return;
+    const file = path.join(extRoot, 'ext.mjs');
+    if (!fs.existsSync(file)) return;
+    try {
+      const def = (await import(pathToFileURL(file).href)).default;
+      if (!def || typeof def !== 'object') throw new Error('default export がオブジェクトではありません');
+      const routes = new Map();
+      for (const [key, fn] of Object.entries(def.routes ?? {})) {
+        if (/^(GET|POST) \/[^\s]*$/.test(key) && typeof fn === 'function') routes.set(key, fn); else warn(`routes の項目を無視しました: ${key}`);
+      }
+      ext = { routes, allowed: new Set(Array.isArray(def.remoteAllowed) ? def.remoteAllowed.filter((k) => typeof k === 'string') : []), panelsJs: def.panelsJs === true, panelsCss: def.panelsCss === true };
+    } catch (e) {
+      warn(`ext.mjs を読み込めませんでした(拡張なしで続行): ${e?.message ?? e}`);
+    }
+  }
+  const extReady = loadExt(); // 起動(listen)前に読み終える
+  const EXT_PANELS = { '/ext/panels.js': ['panels.js', 'panelsJs'], '/ext/panels.css': ['panels.css', 'panelsCss'] };
+  // 本体のどの経路にも一致しなかった要求だけ受ける。true を返したら処理済み
+  function dispatchExt(req, res, url, proj, isRemote) {
+    if (!ext) return false;
+    const p = url.pathname;
+    const key = `${req.method} ${p}`;
+    const panel = req.method === 'GET' ? EXT_PANELS[p] : undefined;
+    const fn = ext.routes.get(key);
+    if (!fn && !(panel && ext[panel[1]])) return false;
+    // 遠隔(スマホ)は、拡張が remoteAllowed に挙げた経路だけ通す(既定は全て 403)
+    if (isRemote && !ext.allowed.has(key)) { res.writeHead(403); res.end(); return true; }
+    if (panel && !fn) {
+      const base = path.join(extRoot, 'public');
+      try {
+        const real = fs.realpathSync(path.join(base, panel[0]));
+        if (!real.startsWith(fs.realpathSync(base) + path.sep)) return notFound(res), true;
+        res.writeHead(200, { 'Content-Type': TYPES[path.extname(real)] ?? 'application/octet-stream', 'Cache-Control': 'no-store' });
+        res.end(fs.readFileSync(real));
+      } catch { notFound(res); }
+      return true;
+    }
+    if (!proj) { notFound(res); return true; }
+    const ctx = { info: proj.info, inbox: proj.inbox, state: proj.state, now, json, readSmallJson, enqueueInstruction, opener, extDir: extRoot, dataDir: path.join(extRoot, 'data') };
+    const fail = (e) => { warn(`${key} が失敗しました: ${e?.message ?? e}`); if (!res.headersSent) res.writeHead(500); res.end(); };
+    try { Promise.resolve(fn(req, res, ctx)).catch(fail); } catch (e) { fail(e); }
+    return true;
+  }
+
   const server = http.createServer(handler(false));
 
   // 遠隔(Tailscale 経由のスマホ)は、合言葉を持つ閲覧だけ通す。通らなければ理由を伝えず 403
@@ -586,6 +635,8 @@ export function startServer({ port, host = '127.0.0.1', allowedRoot = path.join(
     return {
       id: info.id,
       info,
+      state,
+      inbox,
       snap,
       ingest,
       handleInstructionPost, handleAnswerRead, handleDecisionPost, handleAnswerPost, handleAnswerCancel, handleDecisionResolve, handleDeliverablePost, handleDeliverableAct, handleInstructionNext,
@@ -725,9 +776,9 @@ export function startServer({ port, host = '127.0.0.1', allowedRoot = path.join(
           return serveFile(res, root, rel);
         }
       }
-      notFound(res);
+      if (!dispatchExt(req, res, url, proj, isRemote)) notFound(res);
     } else {
-      res.writeHead(405); res.end();
+      if (!dispatchExt(req, res, url, proj, isRemote)) { res.writeHead(405); res.end(); }
     }
   }
 
@@ -745,7 +796,7 @@ export function startServer({ port, host = '127.0.0.1', allowedRoot = path.join(
     });
   }
 
-  return new Promise((resolve, reject) => {
+  return extReady.then(() => new Promise((resolve, reject) => {
     server.once('error', reject);
     server.listen(port, host, () => {
       listenPort = server.address().port;
@@ -764,7 +815,7 @@ export function startServer({ port, host = '127.0.0.1', allowedRoot = path.join(
         }),
       });
     });
-  });
+  }));
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
