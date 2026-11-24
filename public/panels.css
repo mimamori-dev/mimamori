@@ -128,3 +128,19 @@
 .pn-est-diff { font-weight: bold; color: #6b55b8; }
 .pn-est-wait { color: var(--ink-soft); }
 .pn-est-note { font-size: 10px; color: var(--ink-soft); margin: 4px 0 0; }
+
+/* 回答待ちに気づかせる帯(attention.js)。画面最上部に固定、ゆっくり脈動 */
+.attn { box-sizing: border-box; height: 44px; position: fixed; top: 0; left: 0; right: 0; z-index: 60; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 8px 16px; background: #d63a4f; color: #fff; font-weight: bold; box-shadow: 0 4px 16px rgba(160, 20, 40, 0.35); animation: attn-pulse 2.4s ease-in-out infinite; }
+.attn[hidden] { display: none; }
+.attn-t { font-size: 15px; }
+.attn-n { font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums; background: #fff; color: #d63a4f; border-radius: 999px; min-width: 1.5em; text-align: center; padding: 2px 8px; }
+.attn-u { font-size: 14px; }
+.attn-l { font-size: 13px; font-weight: normal; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: 0.95; }
+@keyframes attn-pulse { 0%, 100% { background: #d63a4f; } 50% { background: #f0576b; } }
+@media (prefers-reduced-motion: reduce) { .attn { animation: none; } }
+.attn-ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0; }
+.attn-ctl .note { flex-basis: 100%; margin: 0; }
+.attn-ctl [hidden] { display: none; }
+@media (max-width: 760px) { .attn-l { display: none; } }
+:root.has-attn { --attn-h: 44px; }
+@media (max-width: 760px) { .attn { position: sticky; } #stage { top: var(--attn-h, 0px); } }

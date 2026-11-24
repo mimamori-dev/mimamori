@@ -12,12 +12,19 @@
 <link rel="stylesheet" href="/static/panels.css">
 <script type="module" src="/static/office.js"></script>
 <script defer src="/static/panels.js"></script>
+<script defer src="/static/attention.js"></script>
 <script type="module" src="/static/speech.js"></script>
 <link rel="stylesheet" href="/ext/panels.css">
 <script defer src="/ext/panels.js"></script>
 </head>
 <body>
+<div id="attn" class="attn" role="alert" hidden>
+  <span class="attn-ic" aria-hidden="true">🔔</span>
+  <span class="attn-t">社長の回答待ち</span><b class="attn-n">0</b><span class="attn-u">件</span>
+  <span class="attn-l"></span>
+</div>
 <div id="stage"></div>
+
 
 <div id="leftcol">
 <section id="hud" class="panel" aria-label="今回の作業量">
@@ -35,6 +42,11 @@
     <div><dt>トークン数</dt><dd><b id="st-tokens">—</b></dd></div>
   </dl>
   <div id="quota" class="quota" aria-label="利用枠"></div>
+  <div id="attn-ctl" class="attn-ctl">
+    <button id="attn-sound" class="tts-sw on" type="button" role="switch" aria-checked="true" title="回答待ちが増えたときに短い音を鳴らします">🔔 通知音 <b>ON</b></button>
+    <button id="attn-notify" class="tts-sw" type="button" hidden>🔔 通知を許可</button>
+    <p id="attn-hint" class="note" hidden>ブラウザの制限で、最初に画面をクリックしたあとから鳴ります</p>
+  </div>
   <div id="tts" class="tts">
     <div class="tts-row">
       <button id="tts-sw" class="tts-sw" type="button" role="switch" aria-checked="false" title="部長の発言を声で読み上げます(既定はOFF)">🔊 読み上げ <b id="tts-state">OFF</b></button>

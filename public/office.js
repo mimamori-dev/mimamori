@@ -1458,9 +1458,10 @@ function setConn(ok) {
 }
 function connect() {
   es = new EventSource('/events');
-  es.addEventListener('snapshot', (e) => { setConn(true); const sn = JSON.parse(e.data); if (Number.isFinite(sn?.delegation?.seq)) lastDelegSeq = Math.max(lastDelegSeq, sn.delegation.seq); applySnapshot(sn, true); });
+  es.addEventListener('snapshot', (e) => { setConn(true); const sn = JSON.parse(e.data); if (Number.isFinite(sn?.delegation?.seq)) lastDelegSeq = Math.max(lastDelegSeq, sn.delegation.seq); applySnapshot(sn, true); window.dispatchEvent(new CustomEvent('mimamori:snapshot', { detail: sn })); }); // attention.js が接続を増やさず使う
   es.addEventListener('office', (e) => {
     const d = JSON.parse(e.data);
+    if (d.snapshot) window.dispatchEvent(new CustomEvent('mimamori:snapshot', { detail: d.snapshot }));
     const kind = d.event?.kind;
     if (kind === 'prompt') {
       meeting = null;

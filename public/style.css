@@ -38,7 +38,7 @@ body {
 h1, h2 { margin: 0; }
 
 /* 左: 会社名と作業量、その下に社長の指示の一覧 */
-#leftcol { position: fixed; z-index: 10; left: var(--gap); top: var(--gap); width: var(--left-w); max-height: calc(100vh - var(--gap) * 2); display: flex; flex-direction: column; gap: 10px; }
+#leftcol { position: fixed; z-index: 10; left: var(--gap); top: calc(var(--gap) + var(--attn-h, 0px)); width: var(--left-w); max-height: calc(100vh - var(--gap) * 2 - var(--attn-h, 0px)); display: flex; flex-direction: column; gap: 10px; }
 #leftcol .panel { position: static; width: auto; }
 #hud { padding: 14px 16px 12px; flex: none; }
 #instr { padding: 11px 12px 10px 14px; min-height: 0; display: flex; flex-direction: column; }
@@ -86,7 +86,7 @@ h1, h2 { margin: 0; }
 
 /* 上: 社長ご判断の帯(あるときだけ。案件ボードを下へずらす) */
 #decision {
-  top: var(--gap);
+  top: calc(var(--gap) + var(--attn-h, 0px));
   left: calc(var(--gap) * 2 + var(--left-w));
   right: calc(var(--gap) * 2 + var(--right-w));
   padding: 10px 14px 8px;
@@ -110,7 +110,7 @@ h1, h2 { margin: 0; }
 
 /* 上: 案件ボード */
 #board {
-  top: calc(var(--gap) + var(--dc-h, 0px));
+  top: calc(var(--gap) + var(--attn-h, 0px) + var(--dc-h, 0px));
   left: calc(var(--gap) * 2 + var(--left-w));
   right: calc(var(--gap) * 2 + var(--right-w));
   height: clamp(150px, 25vh, 240px);
@@ -145,7 +145,7 @@ h1, h2 { margin: 0; }
 .empty { font-size: 10.5px; color: var(--ink-soft); padding: 2px 4px; }
 
 /* 右: 通知 */
-#feed { right: var(--gap); top: var(--gap); bottom: var(--gap); width: var(--right-w); display: flex; flex-direction: column; padding: 12px 10px 10px 14px; }
+#feed { right: var(--gap); top: calc(var(--gap) + var(--attn-h, 0px)); bottom: var(--gap); width: var(--right-w); display: flex; flex-direction: column; padding: 12px 10px 10px 14px; }
 #feed h2 { font-size: 13px; padding-bottom: 8px; }
 #feed h2 small { font-weight: normal; font-size: 10px; color: var(--ink-soft); margin-left: 4px; }
 #feed-list { list-style: none; margin: 0; padding: 0 4px 0 0; overflow-y: auto; flex: 1; scrollbar-width: thin; }
@@ -402,7 +402,7 @@ button.ex-row:hover, button.ex-row:focus-visible { background: #ece6f8; outline:
 /* 確認待ちの内容(部長が社長を待っているとき。上の帯。PCでは案件ボードを下へずらす) */
 #waitbar {
   --wc: #e8962e; --wbg: #fff4d6;
-  top: var(--gap);
+  top: calc(var(--gap) + var(--attn-h, 0px));
   left: calc(var(--gap) * 2 + var(--left-w));
   right: calc(var(--gap) * 2 + var(--right-w));
   padding: 7px 12px;
