@@ -55,12 +55,13 @@ const cookieOf = (req, name) => {
 // 「投稿済みにする」から掲示板のカードが自動で消えるまでの猶予(この間は「未投稿に戻す」で取り消せる)
 export const SNS_POSTED_GRACE_MS = 3 * 60 * 1000;
 
-export function startServer({ port, host = '127.0.0.1', allowedRoot = path.join(os.homedir(), '.claude', 'projects'), now = Date.now, waitMaxSec = 30, assignBubbleMs = 2500, treeRoot = PROJECT_ROOT, commands = null, commandTimeoutMs = 30_000, decisionGraceMs = 5000, deliverableGraceMs = 5000, snsPostedGraceMs = SNS_POSTED_GRACE_MS, openMinIntervalMs = 1000, opener = openWithDefaultApp, projectsDir = process.env.OFFICE_PROJECTS_DIR ? path.resolve(process.env.OFFICE_PROJECTS_DIR) : path.join(here, 'projects'), narrowTranscripts = false, snsFile = path.join(here, 'data', 'sns-queue.json'), estimatesFile = path.join(here, 'data', 'estimates.jsonl'), rootsFile = path.join(here, 'data', 'project-roots.json'), remoteAllowed = isRemoteEnabled(), extDir = process.env.OFFICE_EXT_DIR || null, voicevoxUrl = 'http://127.0.0.1:50021', ttsTimeoutMs = 10_000 } = {}) {
+export function startServer({ port, host = '127.0.0.1', allowedRoot = path.join(os.homedir(), '.claude', 'projects'), now = Date.now, waitMaxSec = 30, assignBubbleMs = 2500, treeRoot = PROJECT_ROOT, commands = null, commandTimeoutMs = 30_000, decisionGraceMs = 5000, deliverableGraceMs = 5000, snsPostedGraceMs = SNS_POSTED_GRACE_MS, openMinIntervalMs = 1000, opener = openWithDefaultApp, projectsDir = process.env.OFFICE_PROJECTS_DIR ? path.resolve(process.env.OFFICE_PROJECTS_DIR) : path.join(here, 'projects'), narrowTranscripts = false, snsFile = path.join(here, 'data', 'sns-queue.json'), estimatesFile = path.join(here, 'data', 'estimates.jsonl'), rootsFile = treeRoot === PROJECT_ROOT ? path.join(here, 'data', 'project-roots.json') : null, remoteAllowed = isRemoteEnabled(), extDir = process.env.OFFICE_EXT_DIR || null, voicevoxUrl = 'http://127.0.0.1:50021', ttsTimeoutMs = 10_000 } = {}) {
   const pricing = readJson('pricing.json');
   // treeRoot は demo(既定のプロジェクト)のルートを上書きする(テスト用)。ほかのプロジェクトのルートは project.json
   const registry = loadProjects({ projectsDir, legacyRosterPath: path.join(here, 'roster.json'), defaultRoot: treeRoot });
   // 画面で選んだ基準フォルダ(data/project-roots.json)。いまも使えるフォルダのものだけ、project.json の root より優先する
-  for (const [id, root] of Object.entries(loadRootOverrides(rootsFile))) {
+  // treeRoot を明示した起動(テスト)では、保存済みの選択で上書きしない
+  for (const [id, root] of Object.entries(rootsFile ? loadRootOverrides(rootsFile) : {})) {
     const info = registry.get(id);
     const c = info && typeof root === 'string' ? checkRootChoice(root) : { ok: false };
     if (c.ok) info.root = c.root;
@@ -830,15 +831,15 @@ export function startServer({ port, host = '127.0.0.1', allowedRoot = path.join(
         if (!c.ok) return json(res, 400, { ok: false, reason: c.reason });
         proj.info.root = c.root; // 基準フォルダは info を直接見ているので、成果物の登録先・ファイル一覧・hook の振り分けに即反映される
         let saved = true;
-        try { saveRootOverride(rootsFile, proj.info.id, c.root); } catch { saved = false; }
+        try { if (!rootsFile) throw new Error('no file'); saveRootOverride(rootsFile, proj.info.id, c.root); } catch { saved = false; }
         json(res, 200, { ok: true, saved, rootName: path.basename(c.root) || c.root });
       });
     } else if (req.method === 'GET' && p === '/instruction/next') {
       if (proj) proj.handleInstructionNext(req, res, url); else notFound(res);
     } else if (req.method === 'GET' && p === '/projects') {
-      // 登録済みプロジェクトの一覧(表示名・色だけ。ルートのパスは出さない)
+      // 登録済みプロジェクトの一覧(表示名・色と、PC の画面にだけ基準フォルダの名前。ルートのパスは出さない)
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
-      res.end(JSON.stringify([...projects.values()].map(({ info }) => ({ id: info.id, name: info.name, color: info.color }))));
+      res.end(JSON.stringify([...projects.values()].map(({ info }) => ({ id: info.id, name: info.name, color: info.color, ...(!isRemote && info.root ? { folderName: path.basename(info.root) || info.root } : {}) }))));
     } else if (req.method === 'GET' && p === '/remote-info') {
       if (!remoteAllowed) { res.writeHead(404); res.end(); return; } // 遠隔が無効(OFFICE_REMOTE=1 なし)なら口ごと無い
       res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });

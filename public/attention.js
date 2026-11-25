@@ -3,7 +3,7 @@
 // 通知本文はカードの見出しだけ(金額・個人情報を入れない)。遠隔(スマホ)は帯と題の点滅だけで、通知・音は出さない。
 (() => {
   'use strict';
-  const BASE_TITLE = 'Mimamori';
+  const baseTitle = () => document.body?.dataset?.title || 'Mimamori'; // 画面(office.js)が選択中のフォルダ名を入れる
   const ACTIVE = new Set(['new', 'opened', 'approving', 'rejecting']);
   const clip = (s, n) => { const a = Array.from(String(s ?? '')); return a.length > n ? `${a.slice(0, n).join('')}…` : a.join(''); };
 
@@ -101,13 +101,15 @@
 
   function setTitle() {
     if (blink) { clearInterval(blink); blink = null; }
-    if (count <= 0) { document.title = BASE_TITLE; return; }
-    const alt = `(${count})社長の回答待ち - ${BASE_TITLE}`;
+    if (count <= 0) { document.title = baseTitle(); return; }
+    const alt = `(${count})社長の回答待ち - ${baseTitle()}`;
     document.title = alt;
     if (reduce) return;
     let flip = false;
-    blink = setInterval(() => { flip = !flip; document.title = flip ? BASE_TITLE : alt; }, 1000); // 1秒ごとに交代=2秒周期
+    blink = setInterval(() => { flip = !flip; document.title = flip ? baseTitle() : alt; }, 1000); // 1秒ごとに交代=2秒周期
   }
+
+  g.addEventListener('office-title', setTitle); // 題が変わったとき(フォルダを選び直したとき)
 
   function setFavicon(on) {
     const l = document.querySelector('link[rel="icon"]'); if (!l) return;

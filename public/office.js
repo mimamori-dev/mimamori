@@ -68,6 +68,24 @@ const el = (tag, cls, text) => {
   return e;
 };
 
+// 見出し(h1)とタブ題を、選択中のフォルダ(プロジェクト)の名前にする。取れなければ元の「Mimamori」のまま
+function setOfficeTitle(name) {
+  const t = typeof name === 'string' && name.trim() ? name.trim().slice(0, 60) : '';
+  if (!t) return;
+  document.body.dataset.title = t;
+  $('#company').textContent = t;
+  window.dispatchEvent(new Event('office-title'));
+}
+(async () => {
+  try {
+    const r = await fetch('/projects', { cache: 'no-store' });
+    if (!r.ok) return;
+    const list = await r.json();
+    const p = Array.isArray(list) ? (list.find((x) => x?.id === 'demo') ?? list[0]) : null;
+    setOfficeTitle(p?.folderName ?? p?.name);
+  } catch { /* 題が変えられなくても本体の表示は止めない */ }
+})();
+
 // ---------- 3D の土台 ----------
 const stage = $('#stage');
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -2119,6 +2137,7 @@ $('#ex-pk-ok').addEventListener('click', async () => {
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !j.ok) { $('#ex-pk-note').textContent = j.reason ?? `変えられませんでした(エラー ${r.status})`; return; }
     $('#ex-picker').hidden = true;
+    setOfficeTitle(j.rootName);
     exLoad('');
     if (!j.saved) $('#ex-path').textContent += '(保存できなかったため、再起動すると元に戻ります)';
   } catch { $('#ex-pk-note').textContent = 'サーバーに繋がっていません'; } finally { pkBusy = false; $('#ex-pk-ok').disabled = !pkPath; }

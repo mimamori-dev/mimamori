@@ -79,3 +79,17 @@ test('browseDirs: よく使う場所(places)と、1つ上(parent)を返す', () 
     assert.ok(browseDirs('').body.places.every((pl) => path.isAbsolute(pl.path)));
   } finally { fs.rmSync(d, { recursive: true, force: true }); }
 });
+
+test('/projects は PC の画面にだけ基準フォルダの名前を返す(パスは出さない)', async () => {
+  const d = mk();
+  const dataDir = mk();
+  const pick = path.join(d, '見出しになる名前');
+  fs.mkdirSync(pick);
+  const s = await startServer({ port: 0, treeRoot: pick, rootsFile: null, snsFile: path.join(dataDir, 'sns.json'), estimatesFile: path.join(dataDir, 'e.jsonl') });
+  try {
+    const text = await (await fetch(`http://127.0.0.1:${s.port}/projects`)).text();
+    const demo = JSON.parse(text).find((p) => p.id === 'demo');
+    assert.equal(demo.folderName, '見出しになる名前');
+    assert.equal(text.includes(d), false); // フォルダ名だけ。パスは出さない
+  } finally { await s.close(); fs.rmSync(d, { recursive: true, force: true }); fs.rmSync(dataDir, { recursive: true, force: true }); }
+});
