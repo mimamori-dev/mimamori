@@ -64,3 +64,18 @@ test('POST /project-root で基準フォルダが変わり、/tree に反映さ�
     } finally { await s.close(); }
   } finally { fs.rmSync(d, { recursive: true, force: true }); fs.rmSync(dataDir, { recursive: true, force: true }); }
 });
+
+test('browseDirs: よく使う場所(places)と、1つ上(parent)を返す', () => {
+  const d = mk();
+  try {
+    fs.mkdirSync(path.join(d, 'sub'));
+    const r = browseDirs(path.join(d, 'sub'));
+    assert.equal(r.body.parent, fs.realpathSync(d));
+    assert.ok(Array.isArray(r.body.places));
+    for (const pl of r.body.places) {
+      assert.equal(typeof pl.label, 'string');
+      assert.ok(path.isAbsolute(pl.path) && fs.statSync(pl.path).isDirectory()); // 存在する場所だけ
+    }
+    assert.ok(browseDirs('').body.places.every((pl) => path.isAbsolute(pl.path)));
+  } finally { fs.rmSync(d, { recursive: true, force: true }); }
+});

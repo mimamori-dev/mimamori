@@ -2042,7 +2042,26 @@ async function exLoad(path) {
 // --- フォルダを選ぶ(GET /browse?path=<絶対パス> -> {path, parent, entries:[{name}], isRoot, drives?} / POST /project-root {root})。フォルダ名だけ。PC の画面だけ ---
 const BS = String.fromCharCode(92); // バックスラッシュ(Windows の区切り)
 let pkPath = '';
+let pkParent = null;
 let pkBusy = false;
+$('#ex-pk-up').addEventListener('click', () => { if (pkParent !== null) pkLoad(pkParent); });
+// よく使う場所(デスクトップなど)とドライブ一覧へのボタン。いま居る場所のボタンは目印をつける
+function pkRenderPlaces(places, here) {
+  const btns = [];
+  for (const pl of Array.isArray(places) ? places : []) {
+    if (typeof pl?.path !== 'string' || typeof pl?.label !== 'string') continue;
+    const b = el('button', 'ex-pick' + (pl.path === here ? ' ex-pick-on' : ''), pl.label);
+    b.type = 'button';
+    b.title = pl.path;
+    b.addEventListener('click', () => pkLoad(pl.path));
+    btns.push(b);
+  }
+  const drives = el('button', 'ex-pick' + (here === '' ? ' ex-pick-on' : ''), 'ドライブ一覧');
+  drives.type = 'button';
+  drives.addEventListener('click', () => pkLoad(''));
+  btns.push(drives);
+  $('#ex-pk-places').replaceChildren(...btns);
+}
 $('#ex-pick').addEventListener('click', () => {
   const open = $('#ex-picker').hidden;
   $('#ex-picker').hidden = !open;
@@ -2060,14 +2079,11 @@ async function pkLoad(path) {
     pkPath = typeof j.path === 'string' ? j.path : '';
     $('#ex-pk-path').textContent = pkPath || 'ドライブ一覧';
     $('#ex-pk-ok').disabled = !pkPath || j.isRoot === true; // ドライブ直下・一覧は選べない
+    pkParent = pkPath ? (j.parent ?? '') : null; // null = これ以上上がない(ドライブ一覧)
+    $('#ex-pk-up').disabled = pkParent === null;
+    $('#ex-pk-up').title = pkParent === '' ? 'ドライブ一覧へ' : pkParent === null ? '一番上です' : '1つ上のフォルダへ';
+    pkRenderPlaces(j.places, pkPath);
     const rows = [];
-    if (pkPath) {
-      const up = el('button', 'ex-row ex-up');
-      up.type = 'button';
-      up.append(el('span', 'ex-ico'), el('span', 'ex-name', '上のフォルダへ'));
-      up.addEventListener('click', () => pkLoad(j.parent ?? ''));
-      rows.push(up);
-    }
     const sep = pkPath.includes(BS) ? BS : '/';
     for (const e of Array.isArray(j.entries) ? j.entries : []) {
       const name = String(e.name ?? '');
@@ -2078,10 +2094,12 @@ async function pkLoad(path) {
       row.addEventListener('click', () => pkLoad(j.drives ? name : pkPath.endsWith(sep) ? pkPath + name : pkPath + sep + name));
       rows.push(row);
     }
-    if (rows.length === (pkPath ? 1 : 0)) rows.push(el('div', 'ex-msg', '中にフォルダはありません'));
+    if (!rows.length) rows.push(el('div', 'ex-msg', '中にフォルダはありません'));
     ul.replaceChildren(...rows.map((x) => { const li = el('li'); li.append(x); return li; }));
   } catch (err) {
     pkPath = '';
+    pkParent = null;
+    $('#ex-pk-up').disabled = true;
     $('#ex-pk-ok').disabled = true;
     ul.replaceChildren(el('li', 'ex-msg err', err instanceof Error && /開けません|読み込めません/.test(err.message) ? err.message : 'サーバーに繋がっていません'));
     // 開けないフォルダに入ってしまっても戻れるよう、一番上へ戻る行を出す

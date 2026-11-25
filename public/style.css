@@ -567,3 +567,6 @@ button.ex-row:hover, button.ex-row:focus-visible { background: #ece6f8; outline:
 .ex-picker { border: 1px solid #ddd5ee; border-radius: 8px; padding: 6px 6px 6px 8px; margin: 0 0 6px; background: rgba(255, 255, 255, 0.6); }
 .ex-picker[hidden] { display: none; }
 .ex-pk-act { display: flex; gap: 6px; margin-top: 4px; }
+.ex-pk-nav { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin: 0 0 4px; }
+.ex-pk-places { display: contents; }
+.ex-pick-on { background: #d9ccf3; border-color: #a78fdc; font-weight: bold; }
