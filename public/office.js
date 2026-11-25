@@ -2007,9 +2007,10 @@ async function exLoad(path) {
   ul.replaceChildren(el('li', 'ex-msg', '読み込み中…'));
   try {
     const r = await fetch(`/tree?path=${encodeURIComponent(path)}`, { cache: 'no-store' });
-    if (!r.ok) throw new Error(r.status === 403 ? 'この画面からは見られません' : `読み込めませんでした(エラー ${r.status})`);
+    if (!r.ok) throw new Error(r.status === 403 ? 'この画面からは見られません' : r.status === 404 && !path ? '読み込めませんでした。フォルダが未設定か、見つかりません。「フォルダを選ぶ」で選んでください' : `読み込めませんでした(エラー ${r.status})`);
     const j = await r.json();
     exLoaded = true;
+    $('#ex-root-name').textContent = typeof j.rootName === 'string' ? `📁 ${j.rootName}` : '';
     exPath = typeof j.path === 'string' ? j.path : path;
     $('#ex-path').textContent = `/${exPath}`;
     const rows = [];
@@ -2037,3 +2038,69 @@ async function exLoad(path) {
     ul.replaceChildren(el('li', 'ex-msg err', err instanceof Error && /見られません|読み込めません/.test(err.message) ? err.message : 'サーバーに繋がっていません'));
   }
 }
+
+// --- フォルダを選ぶ(GET /browse?path=<絶対パス> -> {path, parent, entries:[{name}], isRoot, drives?} / POST /project-root {root})。フォルダ名だけ。PC の画面だけ ---
+let pkPath = '';
+let pkBusy = false;
+$('#ex-pick').addEventListener('click', () => {
+  const open = $('#ex-picker').hidden;
+  $('#ex-picker').hidden = !open;
+  if (open) pkLoad(''); // 一番上(ドライブ一覧)から。現在の場所は絶対パスを画面に持たないため
+});
+$('#ex-pk-cancel').addEventListener('click', () => { $('#ex-picker').hidden = true; });
+async function pkLoad(path) {
+  const ul = $('#ex-pk-list');
+  $('#ex-pk-note').textContent = '';
+  ul.replaceChildren(el('li', 'ex-msg', '読み込み中…'));
+  try {
+    const r = await fetch(`/browse?path=${encodeURIComponent(path)}`, { cache: 'no-store' });
+    if (!r.ok) throw new Error(r.status === 403 ? 'このフォルダは開けません' : `読み込めませんでした(エラー ${r.status})`);
+    const j = await r.json();
+    pkPath = typeof j.path === 'string' ? j.path : '';
+    $('#ex-pk-path').textContent = pkPath || 'ドライブ一覧';
+    $('#ex-pk-ok').disabled = !pkPath || j.isRoot === true; // ドライブ直下・一覧は選べない
+    const rows = [];
+    if (pkPath) {
+      const up = el('button', 'ex-row ex-up');
+      up.type = 'button';
+      up.append(el('span', 'ex-ico'), el('span', 'ex-name', '上のフォルダへ'));
+      up.addEventListener('click', () => pkLoad(j.parent ?? ''));
+      rows.push(up);
+    }
+    const sep = pkPath.includes('\') ? '\' : '/';
+    for (const e of Array.isArray(j.entries) ? j.entries : []) {
+      const name = String(e.name ?? '');
+      const row = el('button', 'ex-row ex-dir');
+      row.type = 'button';
+      row.title = name;
+      row.append(el('span', 'ex-ico'), el('span', 'ex-name', name));
+      row.addEventListener('click', () => pkLoad(j.drives ? name : pkPath.endsWith(sep) ? pkPath + name : pkPath + sep + name));
+      rows.push(row);
+    }
+    if (rows.length === (pkPath ? 1 : 0)) rows.push(el('div', 'ex-msg', '中にフォルダはありません'));
+    ul.replaceChildren(...rows.map((x) => { const li = el('li'); li.append(x); return li; }));
+  } catch (err) {
+    pkPath = '';
+    $('#ex-pk-ok').disabled = true;
+    ul.replaceChildren(el('li', 'ex-msg err', err instanceof Error && /開けません|読み込めません/.test(err.message) ? err.message : 'サーバーに繋がっていません'));
+    // 開けないフォルダに入ってしまっても戻れるよう、一番上へ戻る行を出す
+    const top = el('button', 'ex-row ex-up');
+    top.type = 'button';
+    top.append(el('span', 'ex-ico'), el('span', 'ex-name', '一番上へ戻る'));
+    top.addEventListener('click', () => pkLoad(''));
+    const li = el('li'); li.append(top); ul.append(li);
+  }
+}
+$('#ex-pk-ok').addEventListener('click', async () => {
+  if (pkBusy || !pkPath) return;
+  pkBusy = true;
+  $('#ex-pk-ok').disabled = true;
+  try {
+    const r = await fetch('/project-root', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ root: pkPath }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.ok) { $('#ex-pk-note').textContent = j.reason ?? `変えられませんでした(エラー ${r.status})`; return; }
+    $('#ex-picker').hidden = true;
+    exLoad('');
+    if (!j.saved) $('#ex-path').textContent += '(保存できなかったため、再起動すると元に戻ります)';
+  } catch { $('#ex-pk-note').textContent = 'サーバーに繋がっていません'; } finally { pkBusy = false; $('#ex-pk-ok').disabled = !pkPath; }
+});

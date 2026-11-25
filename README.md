@@ -87,6 +87,8 @@ node tools/new-project.mjs <id>   # 例: node tools/new-project.mjs my-app
 
 `projects/_template/` を元に `projects/<id>/` を作ります。`id` は小文字英字で始まり、小文字英数字・`_`・`-`、32文字以内です。作ったあと `project.json`(`name`・`color`・`root`)と `roster.json`(名簿)を編集します。各項目の意味は `projects/_template/README.md` にあります。`root` はファイル一覧・成果物登録の基準フォルダ(`null` なら未設定)で、作業フォルダがこの下にある hook をそのプロジェクトに振り分けます。同梱の `projects/demo/`(サンプル)と `projects/apps/` が見本です。壊れた設定は、起動時のターミナルと `npm run doctor` に理由つきで警告が出ます(そのプロジェクトは読み込まれません)。
 
+画面右の「フォルダ構成」にある「フォルダを選ぶ」で、いま見ているプロジェクトの基準フォルダ(ファイル一覧・成果物登録・hook の振り分けの基準)を、`project.json` を編集せずに変えられます。選んだ場所は `data/project-roots.json`(gitに入りません)に保存され、再起動後も残ります(フォルダが無くなっていれば `project.json` の `root` に戻ります)。画面に出るのはフォルダ名だけで、ドライブ直下は選べません。この操作はPCの画面だけで、スマホ(遠隔)・他サイトからは 403 です。
+
 プロジェクトの置き場所を変えたいときは、環境変数 `OFFICE_PROJECTS_DIR` に `projects/` と同じ構成のフォルダを指定します(未指定なら本体の `projects/`)。
 **信頼できる自分のフォルダだけを指定してください。** 指定先の `project.json` の `root` が、ファイル一覧・成果物登録の基準になり得ます。`npm run doctor` は指定先も検査します。`new-project` は `projects/` 固定で指定先には効かないので、指定先では `projects/_template/` をコピーして作ってください。
 

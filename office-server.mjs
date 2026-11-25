@@ -10,6 +10,7 @@ import { shorten, clipInstruction, promptText } from './lib/describe.mjs';
 import { createUsageMeter } from './lib/usage-meter.mjs';
 import { createCommandRunner, defaultCommands } from './lib/commands.mjs';
 import { listTree } from './lib/tree.mjs';
+import { browseDirs, checkRootChoice, loadRootOverrides, saveRootOverride } from './lib/folders.mjs';
 import { createTalkReader } from './lib/talk.mjs';
 import { createEstimates } from './lib/estimates.mjs';
 import { checkDeliverablePath, openWithDefaultApp, KINDS } from './lib/deliverables.mjs';
@@ -54,10 +55,16 @@ const cookieOf = (req, name) => {
 // 「投稿済みにする」から掲示板のカードが自動で消えるまでの猶予(この間は「未投稿に戻す」で取り消せる)
 export const SNS_POSTED_GRACE_MS = 3 * 60 * 1000;
 
-export function startServer({ port, host = '127.0.0.1', allowedRoot = path.join(os.homedir(), '.claude', 'projects'), now = Date.now, waitMaxSec = 30, assignBubbleMs = 2500, treeRoot = PROJECT_ROOT, commands = null, commandTimeoutMs = 30_000, decisionGraceMs = 5000, deliverableGraceMs = 5000, snsPostedGraceMs = SNS_POSTED_GRACE_MS, openMinIntervalMs = 1000, opener = openWithDefaultApp, projectsDir = process.env.OFFICE_PROJECTS_DIR ? path.resolve(process.env.OFFICE_PROJECTS_DIR) : path.join(here, 'projects'), narrowTranscripts = false, snsFile = path.join(here, 'data', 'sns-queue.json'), estimatesFile = path.join(here, 'data', 'estimates.jsonl'), remoteAllowed = isRemoteEnabled(), extDir = process.env.OFFICE_EXT_DIR || null, voicevoxUrl = 'http://127.0.0.1:50021', ttsTimeoutMs = 10_000 } = {}) {
+export function startServer({ port, host = '127.0.0.1', allowedRoot = path.join(os.homedir(), '.claude', 'projects'), now = Date.now, waitMaxSec = 30, assignBubbleMs = 2500, treeRoot = PROJECT_ROOT, commands = null, commandTimeoutMs = 30_000, decisionGraceMs = 5000, deliverableGraceMs = 5000, snsPostedGraceMs = SNS_POSTED_GRACE_MS, openMinIntervalMs = 1000, opener = openWithDefaultApp, projectsDir = process.env.OFFICE_PROJECTS_DIR ? path.resolve(process.env.OFFICE_PROJECTS_DIR) : path.join(here, 'projects'), narrowTranscripts = false, snsFile = path.join(here, 'data', 'sns-queue.json'), estimatesFile = path.join(here, 'data', 'estimates.jsonl'), rootsFile = path.join(here, 'data', 'project-roots.json'), remoteAllowed = isRemoteEnabled(), extDir = process.env.OFFICE_EXT_DIR || null, voicevoxUrl = 'http://127.0.0.1:50021', ttsTimeoutMs = 10_000 } = {}) {
   const pricing = readJson('pricing.json');
   // treeRoot は demo(既定のプロジェクト)のルートを上書きする(テスト用)。ほかのプロジェクトのルートは project.json
   const registry = loadProjects({ projectsDir, legacyRosterPath: path.join(here, 'roster.json'), defaultRoot: treeRoot });
+  // 画面で選んだ基準フォルダ(data/project-roots.json)。いまも使えるフォルダのものだけ、project.json の root より優先する
+  for (const [id, root] of Object.entries(loadRootOverrides(rootsFile))) {
+    const info = registry.get(id);
+    const c = info && typeof root === 'string' ? checkRootChoice(root) : { ok: false };
+    if (c.ok) info.root = c.root;
+  }
   const clients = new Map(); // res -> { remote: 遠隔側の接続か, project: 見ているプロジェクトの id }
   let listenPort = port;
   const runner = createCommandRunner({
@@ -763,7 +770,7 @@ export function startServer({ port, host = '127.0.0.1', allowedRoot = path.join(
     // プロジェクトは ?project=(省略は demo)。登録されていなければ、プロジェクトごとの経路は 404
     const proj = projects.get(url.searchParams.get('project') ?? DEFAULT_PROJECT);
     // 指示の送受信は PC 側(127.0.0.1)だけ。遠隔は合言葉があっても常に 403
-    if (isRemote && ((p === '/instruction' && req.method !== 'POST') || p.startsWith('/instruction/') || p === '/answer-read' || p === '/decision' || p === '/answer' || p === '/answer-cancel' || p === '/decision-resolve' || p === '/estimate' || p === '/estimate/update' || p === '/deliverable' || p === '/deliverable-open' || p === '/deliverable-undo' || p === '/deliverable-dismiss' || p === '/deliverable-approve' || p === '/deliverable-reject' || p === '/deliverable-posted' || p === '/deliverable-unposted' || p === '/commands' || p === '/command' || p === '/tree')) { res.writeHead(403); res.end(); return; }
+    if (isRemote && ((p === '/instruction' && req.method !== 'POST') || p.startsWith('/instruction/') || p === '/answer-read' || p === '/decision' || p === '/answer' || p === '/answer-cancel' || p === '/decision-resolve' || p === '/estimate' || p === '/estimate/update' || p === '/deliverable' || p === '/deliverable-open' || p === '/deliverable-undo' || p === '/deliverable-dismiss' || p === '/deliverable-approve' || p === '/deliverable-reject' || p === '/deliverable-posted' || p === '/deliverable-unposted' || p === '/commands' || p === '/command' || p === '/tree' || p === '/browse' || p === '/project-root')) { res.writeHead(403); res.end(); return; }
     if (isRemote) {
       if (!remote || !remoteGate(req, res, url)) return;
       if (p === '/health' || p === '/remote-info' || LOCAL_ONLY_ROUTES.some(([pre]) => p.startsWith(pre))) { res.writeHead(404); res.end(); return; }
@@ -807,8 +814,25 @@ export function startServer({ port, host = '127.0.0.1', allowedRoot = path.join(
     } else if (req.method === 'GET' && p === '/tree') {
       if (crossSite(req)) { res.writeHead(403); res.end(); return; }
       const r = proj?.info.root ? listTree(proj.info.root, url.searchParams.get('path') ?? '') : { status: 404 };
+      if (r.body) r.body.rootName = path.basename(proj.info.root) || proj.info.root; // 画面の見出し用(フォルダ名だけ。フルパスは出さない)
       res.writeHead(r.status, r.body ? { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } : {});
       res.end(r.body ? JSON.stringify(r.body) : undefined);
+    } else if (req.method === 'GET' && p === '/browse') {
+      // 「フォルダを選ぶ」用。フォルダ名だけを返す(絶対パス指定。空なら一番上)。PC の画面だけ
+      if (crossSite(req)) { res.writeHead(403); res.end(); return; }
+      const r = browseDirs(url.searchParams.get('path') ?? '');
+      res.writeHead(r.status, r.body ? { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } : {});
+      res.end(r.body ? JSON.stringify(r.body) : undefined);
+    } else if (req.method === 'POST' && p === '/project-root') {
+      if (!proj) { notFound(res); return; }
+      readSmallJson(req, res, 2048, (body) => {
+        const c = checkRootChoice(body.root);
+        if (!c.ok) return json(res, 400, { ok: false, reason: c.reason });
+        proj.info.root = c.root; // 基準フォルダは info を直接見ているので、成果物の登録先・ファイル一覧・hook の振り分けに即反映される
+        let saved = true;
+        try { saveRootOverride(rootsFile, proj.info.id, c.root); } catch { saved = false; }
+        json(res, 200, { ok: true, saved, rootName: path.basename(c.root) || c.root });
+      });
     } else if (req.method === 'GET' && p === '/instruction/next') {
       if (proj) proj.handleInstructionNext(req, res, url); else notFound(res);
     } else if (req.method === 'GET' && p === '/projects') {

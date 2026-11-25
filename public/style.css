@@ -556,3 +556,14 @@ button.ex-row:hover, button.ex-row:focus-visible { background: #ece6f8; outline:
 }
 .col h2 { min-width: 0; white-space: nowrap; }
 .col h2 small { white-space: normal; }
+
+/* フォルダを選ぶ(エクスプローラーの基準フォルダ) */
+.ex-root { display: flex; align-items: center; gap: 6px; margin: 0 0 4px; }
+.ex-root-name { flex: 1; min-width: 0; font-size: 11.5px; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ex-pick { flex: none; border: 1px solid #c9bfe0; background: #f3effb; color: var(--ink); font: inherit; font-size: 11px; padding: 2px 9px; border-radius: 9px; cursor: pointer; }
+.ex-pick:hover:not(:disabled), .ex-pick:focus-visible { background: #e6def6; outline: 0; }
+.ex-pick:disabled { opacity: 0.5; cursor: default; }
+.ex-pick-sub { background: transparent; }
+.ex-picker { border: 1px solid #ddd5ee; border-radius: 8px; padding: 6px 6px 6px 8px; margin: 0 0 6px; background: rgba(255, 255, 255, 0.6); }
+.ex-picker[hidden] { display: none; }
+.ex-pk-act { display: flex; gap: 6px; margin-top: 4px; }
