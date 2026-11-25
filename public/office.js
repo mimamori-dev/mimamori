@@ -2040,6 +2040,7 @@ async function exLoad(path) {
 }
 
 // --- フォルダを選ぶ(GET /browse?path=<絶対パス> -> {path, parent, entries:[{name}], isRoot, drives?} / POST /project-root {root})。フォルダ名だけ。PC の画面だけ ---
+const BS = String.fromCharCode(92); // バックスラッシュ(Windows の区切り)
 let pkPath = '';
 let pkBusy = false;
 $('#ex-pick').addEventListener('click', () => {
@@ -2067,7 +2068,7 @@ async function pkLoad(path) {
       up.addEventListener('click', () => pkLoad(j.parent ?? ''));
       rows.push(up);
     }
-    const sep = pkPath.includes('\') ? '\' : '/';
+    const sep = pkPath.includes(BS) ? BS : '/';
     for (const e of Array.isArray(j.entries) ? j.entries : []) {
       const name = String(e.name ?? '');
       const row = el('button', 'ex-row ex-dir');
